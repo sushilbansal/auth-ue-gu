@@ -55,7 +55,7 @@ defmodule AuthUbGuWeb.ConnCase do
   It returns an updated `conn`.
   """
   def log_in_user(conn, user) do
-    token = AuthUbGu.Accounts.generate_user_session_token(user)
+    token = AuthUbGu.Accounts.generate_user_session_token(user, "session")
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})

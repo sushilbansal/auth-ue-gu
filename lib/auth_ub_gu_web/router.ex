@@ -17,25 +17,25 @@ defmodule AuthUbGuWeb.Router do
     plug :accepts, ["json"]
   end
 
-  pipeline :load_oauth_token do
-    plug AuthUbGu.Auth.Pipeline
-  end
+  # pipeline :load_oauth_token do
+  #   plug AuthUbGu.Auth.Pipeline
+  # end
 
   # oauth routes - /auth/google, /auth/github, etc.
   scope "/auth", AuthUbGuWeb do
-    pipe_through [:browser]
+    pipe_through [:browser, :require_authenticated_user]
 
     get "/:provider", AuthController, :request
     get "/:provider/callback", AuthController, :callback
   end
 
-  scope "/", AuthUbGuWeb do
-    pipe_through [:browser, :load_oauth_token]
+  # scope "/", AuthUbGuWeb do
+  #   pipe_through [:browser, :load_oauth_token]
 
-    live_session(:auth_required, on_mount: {AuthUbGuWeb.AuthLiveHook, :ensure_authenticated}) do
-      live "/", ProtectedLive
-    end
-  end
+  #   live_session(:auth_required, on_mount: {AuthUbGuWeb.AuthLiveHook, :ensure_authenticated}) do
+  #     live "/", ProtectedLive
+  #   end
+  # end
 
   # Other scopes may use custom stacks.
   # scope "/api", AuthUbGuWeb do
@@ -80,6 +80,8 @@ defmodule AuthUbGuWeb.Router do
 
     live_session :require_authenticated_user,
       on_mount: [{AuthUbGuWeb.UserAuth, :ensure_authenticated}] do
+      live "/", ProtectedLive
+
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
     end

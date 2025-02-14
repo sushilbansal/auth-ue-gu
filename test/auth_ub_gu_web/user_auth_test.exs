@@ -19,7 +19,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
   describe "log_in_user/3" do
     test "stores the user token in the session", %{conn: conn, user: user} do
-      conn = UserAuth.log_in_user(conn, user)
+      conn = UserAuth.log_in_user(conn, user, "session")
       assert token = get_session(conn, Accounts.get_auth_token_name())
       assert get_session(conn, :live_socket_id) == "users_sessions:#{Base.url_encode64(token)}"
       assert redirected_to(conn) == ~p"/"
@@ -27,17 +27,22 @@ defmodule AuthUbGuWeb.UserAuthTest do
     end
 
     test "clears everything previously stored in the session", %{conn: conn, user: user} do
-      conn = conn |> put_session(:to_be_removed, "value") |> UserAuth.log_in_user(user)
+      conn = conn |> put_session(:to_be_removed, "value") |> UserAuth.log_in_user(user, "session")
       refute get_session(conn, :to_be_removed)
     end
 
     test "redirects to the configured path", %{conn: conn, user: user} do
-      conn = conn |> put_session(:user_return_to, "/hello") |> UserAuth.log_in_user(user)
+      conn =
+        conn |> put_session(:user_return_to, "/hello") |> UserAuth.log_in_user(user, "session")
+
       assert redirected_to(conn) == "/hello"
     end
 
     test "writes a cookie if remember_me is configured", %{conn: conn, user: user} do
-      conn = conn |> fetch_cookies() |> UserAuth.log_in_user(user, %{"remember_me" => "true"})
+      conn =
+        conn
+        |> fetch_cookies()
+        |> UserAuth.log_in_user(user, "session", %{"remember_me" => "true"})
 
       assert get_session(conn, Accounts.get_auth_token_name()) ==
                conn.cookies[@remember_me_cookie]
@@ -99,7 +104,9 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
     test "authenticates user from cookies", %{conn: conn, user: user} do
       logged_in_conn =
-        conn |> fetch_cookies() |> UserAuth.log_in_user(user, %{"remember_me" => "true"})
+        conn
+        |> fetch_cookies()
+        |> UserAuth.log_in_user(user, "session", %{"remember_me" => "true"})
 
       user_token = logged_in_conn.cookies[@remember_me_cookie]
       %{value: signed_token} = logged_in_conn.resp_cookies[@remember_me_cookie]

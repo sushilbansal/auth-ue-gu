@@ -20,16 +20,17 @@ defmodule AuthUbGuWeb.AuthController do
     # this function -   defp create(conn, %{"user" => user_params}, info)
     case(Accounts.find_or_create_oauth_user(auth, provider)) do
       {:ok, user} ->
-        jwt = Accounts.generate_jwt_for_user(user)
+        # jwt = Accounts.generate_jwt_for_user(user)
 
         conn
         |> put_flash(:info, "Logged in successfully")
-        |> Guardian.Plug.sign_in(user)
+        # TODO: needs testing if this is needed - likely it is taken care of by log_in_oauth_user function
+        # |> Guardian.Plug.sign_in(user)
         # setting the remember cookie for oauth users
-        |> UserAuth.log_in_oauth_user(user, jwt, %{"remember_me" => "true"})
-
-      # |> configure_session(renew: true)
-      # |> success_response(user, jwt)
+        |> UserAuth.log_in_user(user, "session", %{
+          "email" => auth.info.email,
+          "remember_me" => "true"
+        })
 
       {:error, _changeset} ->
         conn

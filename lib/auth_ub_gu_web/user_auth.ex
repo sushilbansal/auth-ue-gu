@@ -15,7 +15,7 @@ defmodule AuthUbGuWeb.UserAuth do
 
   def log_in_oauth_user(conn, user, token, params \\ %{}) do
     # just saving the token in the db
-    Accounts.save_auth_token(user, token, "jwt")
+    Accounts.save_auth_token(user, token, "session")
     user_return_to = get_session(conn, :user_return_to)
 
     conn
@@ -37,8 +37,8 @@ defmodule AuthUbGuWeb.UserAuth do
   disconnected on log out. The line can be safely removed
   if you are not using LiveView.
   """
-  def log_in_user(conn, user, params \\ %{}) do
-    token = Accounts.generate_user_session_token(user)
+  def log_in_user(conn, user, context, params \\ %{}) do
+    token = Accounts.generate_user_session_token(user, context)
     user_return_to = get_session(conn, :user_return_to)
 
     conn
@@ -188,7 +188,7 @@ defmodule AuthUbGuWeb.UserAuth do
 
   defp mount_current_user(socket, session) do
     Phoenix.Component.assign_new(socket, :current_user, fn ->
-      if user_token = session["user_token"] do
+      if user_token = session[Atom.to_string(Accounts.get_auth_token_name())] do
         Accounts.get_user_by_session_token(user_token)
       end
     end)

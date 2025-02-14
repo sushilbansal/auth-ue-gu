@@ -224,9 +224,9 @@ defmodule AuthUbGu.Accounts do
   @doc """
   Generates a session token.
   """
-  def generate_user_session_token(user) do
+  def generate_user_session_token(user, context) do
     token = UserToken.build_session_token()
-    save_auth_token(user, token, "session")
+    save_auth_token(user, token, context)
     token
   end
 
