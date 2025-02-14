@@ -59,6 +59,6 @@ defmodule AuthUbGuWeb.ConnCase do
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:user_token, token)
+    |> Plug.Conn.put_session(:guardian_default_token, token)
   end
 end

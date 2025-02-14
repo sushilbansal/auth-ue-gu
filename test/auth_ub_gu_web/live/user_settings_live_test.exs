@@ -110,7 +110,8 @@ defmodule AuthUbGuWeb.UserSettingsLiveTest do
 
       assert redirected_to(new_password_conn) == ~p"/users/settings"
 
-      assert get_session(new_password_conn, :user_token) != get_session(conn, :user_token)
+      assert get_session(new_password_conn, Accounts.get_auth_token_name()) !=
+               get_session(conn, Accounts.get_auth_token_name())
 
       assert Phoenix.Flash.get(new_password_conn.assigns.flash, :info) =~
                "Password updated successfully"

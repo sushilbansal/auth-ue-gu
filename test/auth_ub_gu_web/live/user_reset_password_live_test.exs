@@ -63,7 +63,7 @@ defmodule AuthUbGuWeb.UserResetPasswordLiveTest do
         |> render_submit()
         |> follow_redirect(conn, ~p"/users/log_in")
 
-      refute get_session(conn, :user_token)
+      refute get_session(conn, Accounts.get_auth_token_name())
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Password reset successfully"
       assert Accounts.get_user_by_email_and_password(user.email, "new valid password")
     end

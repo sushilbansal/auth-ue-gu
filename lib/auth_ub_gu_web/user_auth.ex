@@ -13,6 +13,18 @@ defmodule AuthUbGuWeb.UserAuth do
   @remember_me_cookie "_auth_ub_gu_web_user_remember_me"
   @remember_me_options [sign: true, max_age: @max_age, same_site: "Lax"]
 
+  def log_in_oauth_user(conn, user, token, params \\ %{}) do
+    # just saving the token in the db
+    Accounts.save_auth_token(user, token, "jwt")
+    user_return_to = get_session(conn, :user_return_to)
+
+    conn
+    |> renew_session()
+    |> put_token_in_session(token)
+    |> maybe_write_remember_me_cookie(token, params)
+    |> redirect(to: user_return_to || signed_in_path(conn))
+  end
+
   @doc """
   Logs the user in.
 
@@ -73,7 +85,7 @@ defmodule AuthUbGuWeb.UserAuth do
   It clears all session data for safety. See renew_session.
   """
   def log_out_user(conn) do
-    user_token = get_session(conn, :user_token)
+    user_token = get_session(conn, Accounts.get_auth_token_name())
     user_token && Accounts.delete_user_session_token(user_token)
 
     if live_socket_id = get_session(conn, :live_socket_id) do
@@ -97,7 +109,7 @@ defmodule AuthUbGuWeb.UserAuth do
   end
 
   defp ensure_user_token(conn) do
-    if token = get_session(conn, :user_token) do
+    if token = get_session(conn, Accounts.get_auth_token_name()) do
       {token, conn}
     else
       conn = fetch_cookies(conn, signed: [@remember_me_cookie])
@@ -215,7 +227,7 @@ defmodule AuthUbGuWeb.UserAuth do
 
   defp put_token_in_session(conn, token) do
     conn
-    |> put_session(:user_token, token)
+    |> put_session(Accounts.get_auth_token_name(), token)
     |> put_session(:live_socket_id, "users_sessions:#{Base.url_encode64(token)}")
   end
 

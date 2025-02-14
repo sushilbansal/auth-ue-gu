@@ -61,6 +61,22 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :auth_ub_gu, AuthUbGu.Auth.Guardian,
+  issuer: "auth_ub_gu",
+  secret_key: "TXG2SSXo3pfSuVIbqMgHTGopj17HMAXZLCTic3lUuqDg1bbRI16IftSiECOIh6x3"
+
+config :ueberauth, Ueberauth,
+  providers: [
+    # Example provider
+    google: {Ueberauth.Strategy.Google, [default_scope: "email profile"]}
+  ]
+
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: "1059919869688-e50g6tllghoc67u7k361m897fq3ecqts.apps.googleusercontent.com",
+  client_secret: "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"
+
+# System.get_env("GUARDIAN_SECRET_KEY")
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

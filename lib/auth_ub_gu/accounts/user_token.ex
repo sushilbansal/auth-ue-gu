@@ -41,9 +41,13 @@ defmodule AuthUbGu.Accounts.UserToken do
   and devices in the UI and allow users to explicitly expire any
   session they deem invalid.
   """
-  def build_session_token(user) do
-    token = :crypto.strong_rand_bytes(@rand_size)
-    {token, %UserToken{token: token, context: "session", user_id: user.id}}
+  def build_session_token() do
+    :crypto.strong_rand_bytes(@rand_size)
+    # , %UserToken{token: token, context: "session", user_id: user.id}
+  end
+
+  def build_auth_token(user, token, context) do
+    {%UserToken{token: token, context: context, user_id: user.id}}
   end
 
   @doc """
@@ -175,5 +179,13 @@ defmodule AuthUbGu.Accounts.UserToken do
 
   def by_user_and_contexts_query(user, [_ | _] = contexts) do
     from t in UserToken, where: t.user_id == ^user.id and t.context in ^contexts
+  end
+
+  @doc """
+  build hash jwt token  based on guardian token
+  """
+  # TODO: check if it is needed
+  def build_hash_jwt_token(token) do
+    :crypto.hash(:sha256, token) |> Base.encode16()
   end
 end

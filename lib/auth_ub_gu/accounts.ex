@@ -4,10 +4,14 @@ defmodule AuthUbGu.Accounts do
   """
 
   import Ecto.Query, warn: false
+  alias AuthUbGu.Auth.Guardian
   alias AuthUbGu.Repo
 
   alias AuthUbGu.Accounts.{User, UserToken, UserNotifier}
 
+  @auth_token_name :guardian_default_token
+
+  def get_auth_token_name, do: @auth_token_name
   ## Database getters
 
   @doc """
@@ -221,9 +225,17 @@ defmodule AuthUbGu.Accounts do
   Generates a session token.
   """
   def generate_user_session_token(user) do
-    {token, user_token} = UserToken.build_session_token(user)
-    Repo.insert!(user_token)
+    token = UserToken.build_session_token()
+    save_auth_token(user, token, "session")
     token
+  end
+
+  @doc """
+  Generates a session token.
+  """
+  def save_auth_token(user, token, context) do
+    {user_token} = UserToken.build_auth_token(user, token, context)
+    Repo.insert!(user_token)
   end
 
   @doc """
@@ -350,4 +362,76 @@ defmodule AuthUbGu.Accounts do
       {:error, :user, changeset, _} -> {:error, changeset}
     end
   end
+
+  @doc """
+    Handle OAuth login or sign-up
+  """
+  @spec find_or_create_oauth_user(map(), String.t()) ::
+          {:ok, User.t()} | {:error, Ecto.Changeset.t()}
+  def find_or_create_oauth_user(%{info: info, uid: uid}, provider) do
+    email = info.email
+    name = info.name || info.nickname
+
+    # Check if a user exists with the given email
+    # we want to keep the email unique
+    case Repo.get_by(User, email: email) do
+      # If not found, create a new user.
+      nil ->
+        attrs = %{email: email, name: name, provider_uid: uid, provider: provider}
+
+        %User{}
+        |> User.oauth_changeset(attrs, [])
+        |> Repo.insert()
+
+      # If found and has no OAuth provider linked, update it with provider and provider_uid.
+      %User{provider: nil, provider_uid: nil} = user ->
+        user
+        |> User.oauth_changeset(%{provider_uid: uid, provider: provider}, [])
+        |> Repo.update()
+
+      # If found but already linked, just return the user.
+      user ->
+        {:ok, user}
+    end
+  end
+
+  # TODO: not tested yet =========== START
+
+  # generate jwt token
+  def generate_jwt_for_user(user) do
+    {:ok, token, _claims} = Guardian.encode_and_sign(user)
+    token
+  end
+
+  # store jwt in user_tokens
+  def store_jwt(user, token) do
+    hashed_token = UserToken.build_hash_jwt_token(token)
+
+    Repo.insert!(%UserToken{
+      token: hashed_token,
+      user_id: user.id,
+      context: "api_auth"
+    })
+
+    {:ok, token}
+  end
+
+  @doc """
+  check if the jwt token is valid
+  """
+  @spec valid_jwt?(String.t()) :: boolean()
+  def valid_jwt?(token) do
+    hashed_token = UserToken.build_hash_jwt_token(token)
+    Repo.exists?(from ut in UserToken, where: ut.token == ^hashed_token)
+  end
+
+  @doc """
+  revoke jwt token by deleting from user_tokens table
+  """
+  def revoke_jwt(token) do
+    hashed_token = UserToken.build_hash_jwt_token(token)
+    Repo.delete_all(from ut in UserToken, where: ut.token == ^hashed_token)
+  end
+
+  # TODO: not tested yet =========== END
 end

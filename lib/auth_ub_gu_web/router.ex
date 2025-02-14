@@ -17,10 +17,24 @@ defmodule AuthUbGuWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", AuthUbGuWeb do
-    pipe_through :browser
+  pipeline :load_oauth_token do
+    plug AuthUbGu.Auth.Pipeline
+  end
 
-    get "/", PageController, :home
+  # oauth routes - /auth/google, /auth/github, etc.
+  scope "/auth", AuthUbGuWeb do
+    pipe_through [:browser]
+
+    get "/:provider", AuthController, :request
+    get "/:provider/callback", AuthController, :callback
+  end
+
+  scope "/", AuthUbGuWeb do
+    pipe_through [:browser, :load_oauth_token]
+
+    live_session(:auth_required, on_mount: {AuthUbGuWeb.AuthLiveHook, :ensure_authenticated}) do
+      live "/", ProtectedLive
+    end
   end
 
   # Other scopes may use custom stacks.
