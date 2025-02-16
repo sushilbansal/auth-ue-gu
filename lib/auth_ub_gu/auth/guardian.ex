@@ -6,9 +6,9 @@ defmodule AuthUbGu.Auth.Guardian do
 
   # revoke jwt token when user logs out
   # TODO: not tested yet
-  def on_revoke(claims, _token, _options) do
-    Accounts.revoke_jwt(claims["jti"])
-  end
+  # def on_revoke(claims, _token, _options) do
+  #   Accounts.revoke_jwt(claims["jti"])
+  # end
 
   # Required by Guardian: Assigns a unique ID for the token
   def subject_for_token(%User{id: id}, _claims) do

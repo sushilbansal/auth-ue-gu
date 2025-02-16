@@ -17,7 +17,8 @@ defmodule AuthUbGu.Application do
       # Start a worker by calling: AuthUbGu.Worker.start_link(arg)
       # {AuthUbGu.Worker, arg},
       # Start to serve requests, typically the last entry
-      AuthUbGuWeb.Endpoint
+      AuthUbGuWeb.Endpoint,
+      {Task.Supervisor, name: AuthUbGu.TaskSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -14,7 +14,7 @@ defmodule AuthUbGu.Accounts.UserToken do
   @session_validity_in_days 60
 
   schema "users_tokens" do
-    field :token, :binary
+    field :token, :string
     field :context, :string
     field :sent_to, :string
     belongs_to :user, AuthUbGu.Accounts.User
@@ -47,7 +47,7 @@ defmodule AuthUbGu.Accounts.UserToken do
   end
 
   def build_auth_token(user, token, context) do
-    {%UserToken{token: token, context: context, user_id: user.id}}
+    %UserToken{token: token, context: context, user_id: user.id}
   end
 
   @doc """

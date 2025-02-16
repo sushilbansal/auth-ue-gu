@@ -10,6 +10,7 @@ defmodule AuthUbGuWeb.Router do
     plug :put_root_layout, html: {AuthUbGuWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug AuthUbGu.Auth.Pipeline
     plug :fetch_current_user
   end
 
@@ -17,13 +18,9 @@ defmodule AuthUbGuWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # pipeline :load_oauth_token do
-  #   plug AuthUbGu.Auth.Pipeline
-  # end
-
   # oauth routes - /auth/google, /auth/github, etc.
   scope "/auth", AuthUbGuWeb do
-    pipe_through [:browser, :require_authenticated_user]
+    pipe_through [:browser]
 
     get "/:provider", AuthController, :request
     get "/:provider/callback", AuthController, :callback
@@ -80,7 +77,7 @@ defmodule AuthUbGuWeb.Router do
 
     live_session :require_authenticated_user,
       on_mount: [{AuthUbGuWeb.UserAuth, :ensure_authenticated}] do
-      live "/", ProtectedLive
+      live "/protected", ProtectedLive
 
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
@@ -94,6 +91,7 @@ defmodule AuthUbGuWeb.Router do
 
     live_session :current_user,
       on_mount: [{AuthUbGuWeb.UserAuth, :mount_current_user}] do
+      live "/", HomeLive
       live "/users/confirm/:token", UserConfirmationLive, :edit
       live "/users/confirm", UserConfirmationInstructionsLive, :new
     end

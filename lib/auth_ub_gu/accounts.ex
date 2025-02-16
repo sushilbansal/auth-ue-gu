@@ -224,18 +224,11 @@ defmodule AuthUbGu.Accounts do
   @doc """
   Generates a session token.
   """
-  def generate_user_session_token(user, context) do
-    token = UserToken.build_session_token()
-    save_auth_token(user, token, context)
-    token
-  end
-
-  @doc """
-  Generates a session token.
-  """
-  def save_auth_token(user, token, context) do
-    {user_token} = UserToken.build_auth_token(user, token, context)
+  def generate_user_session_token(user, token, context) do
+    # {:ok, token, _claims} = Guardian.encode_and_sign(user)
+    user_token = UserToken.build_auth_token(user, token, context)
     Repo.insert!(user_token)
+    token
   end
 
   @doc """

@@ -10,7 +10,7 @@ defmodule AuthUbGuWeb.ProtectedLive do
   def render(assigns) do
     ~H"""
     <div>
-      <h1>Welcome {@user.email}!</h1>
+      <h1>Welcome {@user.email}! to the protected route</h1>
     </div>
     """
   end

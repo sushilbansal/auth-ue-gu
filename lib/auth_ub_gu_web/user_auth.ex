@@ -3,6 +3,7 @@ defmodule AuthUbGuWeb.UserAuth do
 
   import Plug.Conn
   import Phoenix.Controller
+  alias AuthUbGu.Auth.Guardian
 
   alias AuthUbGu.Accounts
 
@@ -10,20 +11,9 @@ defmodule AuthUbGuWeb.UserAuth do
   # If you want bump or reduce this value, also change
   # the token expiry itself in UserToken.
   @max_age 60 * 60 * 24 * 60
+  # TODO: check what is the default name for the guardian cookie and use that may be??
   @remember_me_cookie "_auth_ub_gu_web_user_remember_me"
   @remember_me_options [sign: true, max_age: @max_age, same_site: "Lax"]
-
-  def log_in_oauth_user(conn, user, token, params \\ %{}) do
-    # just saving the token in the db
-    Accounts.save_auth_token(user, token, "session")
-    user_return_to = get_session(conn, :user_return_to)
-
-    conn
-    |> renew_session()
-    |> put_token_in_session(token)
-    |> maybe_write_remember_me_cookie(token, params)
-    |> redirect(to: user_return_to || signed_in_path(conn))
-  end
 
   @doc """
   Logs the user in.
@@ -37,18 +27,29 @@ defmodule AuthUbGuWeb.UserAuth do
   disconnected on log out. The line can be safely removed
   if you are not using LiveView.
   """
+
   def log_in_user(conn, user, context, params \\ %{}) do
-    token = Accounts.generate_user_session_token(user, context)
+    conn =
+      conn
+      |> renew_session()
+      |> Guardian.Plug.sign_in(user)
+
+    token = Guardian.Plug.current_token(conn)
+
+    Accounts.generate_user_session_token(user, token, context)
     user_return_to = get_session(conn, :user_return_to)
 
     conn
-    |> renew_session()
-    |> put_token_in_session(token)
+    # |> put_token_in_session(token)
+    # TODO: check if we really need to sign in the user via guardian plug
+    # but then there is no harm in doing it
+    # |> Guardian.Plug.sign_in(user)
     |> maybe_write_remember_me_cookie(token, params)
     |> redirect(to: user_return_to || signed_in_path(conn))
   end
 
   defp maybe_write_remember_me_cookie(conn, token, %{"remember_me" => "true"}) do
+    # Guardian.Plug.remember_me(conn, user)
     put_resp_cookie(conn, @remember_me_cookie, token, @remember_me_options)
   end
 
@@ -85,7 +86,9 @@ defmodule AuthUbGuWeb.UserAuth do
   It clears all session data for safety. See renew_session.
   """
   def log_out_user(conn) do
-    user_token = get_session(conn, Accounts.get_auth_token_name())
+    # user_token = get_session(conn, Accounts.get_auth_token_name())
+    # need to get the user token from the guardian plug
+    user_token = Guardian.Plug.current_token(conn)
     user_token && Accounts.delete_user_session_token(user_token)
 
     if live_socket_id = get_session(conn, :live_socket_id) do
@@ -93,8 +96,11 @@ defmodule AuthUbGuWeb.UserAuth do
     end
 
     conn
+    # remove the user from the guardian plug
+    |> Guardian.Plug.sign_out()
     |> renew_session()
     |> delete_resp_cookie(@remember_me_cookie)
+    # |> Guardian.Plug.clear_remember_me()
     |> redirect(to: ~p"/")
   end
 
@@ -103,13 +109,56 @@ defmodule AuthUbGuWeb.UserAuth do
   and remember me token.
   """
   def fetch_current_user(conn, _opts) do
-    {user_token, conn} = ensure_user_token(conn)
-    user = user_token && Accounts.get_user_by_session_token(user_token)
-    assign(conn, :current_user, user)
+    # want to use the guardian plug to get the user
+    # and then run a background task to validate the token
+
+    case ensure_user_token(conn) do
+      {nil, conn} ->
+        assign(conn, :current_user, nil)
+
+      {token, conn} ->
+        case Guardian.decode_and_verify(token) do
+          {:ok, _claims} ->
+            # get the user from the guardian plug
+            user = Guardian.Plug.current_resource(conn)
+
+            # Run background task to verify token in DB
+            Task.Supervisor.start_child(AuthUbGu.TaskSupervisor, fn ->
+              validate_token_in_db(token, conn)
+            end)
+
+            # Assign the user immediately
+            assign(conn, :current_user, user)
+
+          _ ->
+            assign(conn, :current_user, nil)
+        end
+    end
+
+    # {user_token, conn} = ensure_user_token(conn)
+    # user = user_token && Accounts.get_user_by_session_token(user_token)
+    # assign(conn, :current_user, user)
   end
 
+  # Validates the token in the database as a background task.
+  # TODO: check if this method works
+  defp validate_token_in_db(token, conn) do
+    # validate the token in the db and return the user if token is valid
+    case Accounts.get_user_by_session_token(token) do
+      nil ->
+        # logout the user and revoke the token in the db
+        log_out_user(conn)
+
+      _ ->
+        :ok
+    end
+  end
+
+  # since we are using guardian plug to get the user
+  # we need to fetch the token from the guardian plug or cookies
   defp ensure_user_token(conn) do
-    if token = get_session(conn, Accounts.get_auth_token_name()) do
+    # if token = get_session(conn, Accounts.get_auth_token_name()) do
+    if token = Guardian.Plug.current_token(conn) do
       {token, conn}
     else
       conn = fetch_cookies(conn, signed: [@remember_me_cookie])
@@ -188,7 +237,10 @@ defmodule AuthUbGuWeb.UserAuth do
 
   defp mount_current_user(socket, session) do
     Phoenix.Component.assign_new(socket, :current_user, fn ->
+      # this is the benefit of having the same name for session token as the default guardian token name
+      # TODO: check if this works
       if user_token = session[Atom.to_string(Accounts.get_auth_token_name())] do
+        dbg(user_token)
         Accounts.get_user_by_session_token(user_token)
       end
     end)
@@ -226,9 +278,12 @@ defmodule AuthUbGuWeb.UserAuth do
   end
 
   defp put_token_in_session(conn, token) do
+    live_socket_id = Base.url_encode64(token) |> String.slice(0, 16)
+
     conn
-    |> put_session(Accounts.get_auth_token_name(), token)
-    |> put_session(:live_socket_id, "users_sessions:#{Base.url_encode64(token)}")
+    # |> put_session(Accounts.get_auth_token_name(), token)
+    # |> Guardian.Plug.put_session_token(token)
+    |> put_session(:live_socket_id, "users_sessions:#{live_socket_id}")
   end
 
   defp maybe_store_return_to(%{method: "GET"} = conn) do
