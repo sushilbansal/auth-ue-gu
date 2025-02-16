@@ -23,7 +23,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
       assert token = get_session(conn, Accounts.get_auth_token_name())
       assert get_session(conn, :live_socket_id) == "users_sessions:#{Base.url_encode64(token)}"
       assert redirected_to(conn) == ~p"/"
-      assert Accounts.get_user_by_session_token(token)
+      assert Accounts.get_user_by_session_token(token, "session")
     end
 
     test "clears everything previously stored in the session", %{conn: conn, user: user} do
@@ -68,7 +68,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
       refute conn.cookies[@remember_me_cookie]
       assert %{max_age: 0} = conn.resp_cookies[@remember_me_cookie]
       assert redirected_to(conn) == ~p"/"
-      refute Accounts.get_user_by_session_token(user_token)
+      refute Accounts.get_user_by_session_token(user_token, "session")
     end
 
     test "broadcasts to the given live_socket_id", %{conn: conn} do

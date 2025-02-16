@@ -21,7 +21,11 @@ defmodule AuthUbGu.Repo.Migrations.CreateUsersAuthTables do
     create table(:users_tokens) do
       add :user_id, references(:users, on_delete: :delete_all), null: false
       add :token, :text, null: false
-      add :context, :string, null: false
+
+      add :context, :string,
+        null: false,
+        comment: "can be session, refresh, reset_password, confirm, change_email etc."
+
       add :sent_to, :string
 
       timestamps(type: :utc_datetime, updated_at: false)

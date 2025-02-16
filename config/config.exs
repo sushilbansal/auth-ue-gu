@@ -63,7 +63,12 @@ config :phoenix, :json_library, Jason
 
 config :auth_ub_gu, AuthUbGu.Auth.Guardian,
   issuer: "auth_ub_gu",
-  secret_key: "TXG2SSXo3pfSuVIbqMgHTGopj17HMAXZLCTic3lUuqDg1bbRI16IftSiECOIh6x3"
+  secret_key: "TXG2SSXo3pfSuVIbqMgHTGopj17HMAXZLCTic3lUuqDg1bbRI16IftSiECOIh6x3",
+  token_ttl: %{
+    "access" => {1, :minute},
+    "refresh" => {7, :days},
+    "remember_me" => {30, :days}
+  }
 
 config :ueberauth, Ueberauth,
   providers: [

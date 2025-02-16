@@ -39,6 +39,36 @@ defmodule AuthUbGuWeb.AuthController do
     unauthorized_response(conn, "Authentication failed")
   end
 
+  def refresh(conn, %{"refresh_token" => refresh_token}) do
+    # Guardian.Plug.find_token_from_cookies()
+
+    case Guardian.refresh_all_token(refresh_token) do
+      {:ok, tokens} ->
+        conn
+        |> put_status(:ok)
+        |> json(tokens)
+
+      {:error, _reason} ->
+        unauthorized_response(
+          conn,
+          "Invalid refresh token. Please log in again."
+        )
+    end
+  end
+
+  # how to refresh token in the frontend - example in JS
+  # fetch("/api/refresh", {
+  #   method: "POST",
+  #   headers: { "Content-Type": "application/json" },
+  #   body: JSON.stringify({ refresh_token: storedRefreshToken }),
+  # })
+  #   .then(res => res.json())
+  #   .then(data => {
+  #     localStorage.setItem("access_token", data.access);
+  #     localStorage.setItem("refresh_token", data.refresh);
+  #   })
+  #   .catch(err => console.error("Refresh failed", err));
+
   # standard login with email and password - will be called from api likely
   # TODO: needs testing
   def login(conn, %{"email" => email, "password" => password}) do
@@ -83,8 +113,14 @@ defmodule AuthUbGuWeb.AuthController do
   end
 end
 
-# defp maybe_store_return_to(%{method: "GET"} = conn) do
-#   put_session(conn, :user_return_to, current_path(conn))
-# end
+# test "GET /auth/me", %{conn: conn} do
+#   user = insert(:user) # See https://github.com/thoughtbot/ex_machina
 
-# |> redirect(to: Routes.page_path(conn, :index))
+#   {:ok, token, _} = encode_and_sign(user, %{}, token_type: :access)
+
+#   conn = conn
+#   |> put_req_header("authorization", "Bearer " <> token)
+#   |> get(auth_path(conn, :me))
+
+#   # Assert things here
+# end

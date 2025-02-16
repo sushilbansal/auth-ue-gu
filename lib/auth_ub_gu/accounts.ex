@@ -228,14 +228,15 @@ defmodule AuthUbGu.Accounts do
     # {:ok, token, _claims} = Guardian.encode_and_sign(user)
     user_token = UserToken.build_auth_token(user, token, context)
     Repo.insert!(user_token)
-    token
   end
 
   @doc """
   Gets the user with the given signed token.
   """
-  def get_user_by_session_token(token) do
-    {:ok, query} = UserToken.verify_session_token_query(token)
+  def get_user_by_session_token(token, context, opts \\ []) do
+    {:ok, query} =
+      UserToken.verify_session_token_query(token, context, opts)
+
     Repo.one(query)
   end
 

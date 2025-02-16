@@ -331,25 +331,25 @@ defmodule AuthUbGu.AccountsTest do
     end
   end
 
-  describe "get_user_by_session_token/1" do
+  describe "get_user_by_session_token/2" do
     setup do
       user = user_fixture()
-      token = Accounts.generate_user_session_token(user)
+      token = Accounts.generate_user_session_token(user, "session")
       %{user: user, token: token}
     end
 
     test "returns user by token", %{user: user, token: token} do
-      assert session_user = Accounts.get_user_by_session_token(token)
+      assert session_user = Accounts.get_user_by_session_token(token, "session")
       assert session_user.id == user.id
     end
 
     test "does not return user for invalid token" do
-      refute Accounts.get_user_by_session_token("oops")
+      refute Accounts.get_user_by_session_token("oops", "session")
     end
 
     test "does not return user for expired token", %{token: token} do
       {1, nil} = Repo.update_all(UserToken, set: [inserted_at: ~N[2020-01-01 00:00:00]])
-      refute Accounts.get_user_by_session_token(token)
+      refute Accounts.get_user_by_session_token(token, "session")
     end
   end
 
@@ -358,7 +358,7 @@ defmodule AuthUbGu.AccountsTest do
       user = user_fixture()
       token = Accounts.generate_user_session_token(user)
       assert Accounts.delete_user_session_token(token) == :ok
-      refute Accounts.get_user_by_session_token(token)
+      refute Accounts.get_user_by_session_token(token, "session")
     end
   end
 

@@ -26,6 +26,12 @@ defmodule AuthUbGuWeb.Router do
     get "/:provider/callback", AuthController, :callback
   end
 
+  scope "/api", AuthUbGuWeb do
+    pipe_through [:api]
+
+    post "/refresh", AuthController, :refresh
+  end
+
   # scope "/", AuthUbGuWeb do
   #   pipe_through [:browser, :load_oauth_token]
 

@@ -10,10 +10,10 @@ defmodule AuthUbGuWeb.UserAuth do
   # Make the remember me cookie valid for 60 days.
   # If you want bump or reduce this value, also change
   # the token expiry itself in UserToken.
-  @max_age 60 * 60 * 24 * 60
+  # @max_age 60 * 60 * 24 * 60
   # TODO: check what is the default name for the guardian cookie and use that may be??
   @remember_me_cookie "_auth_ub_gu_web_user_remember_me"
-  @remember_me_options [sign: true, max_age: @max_age, same_site: "Lax"]
+  # @remember_me_options [sign: true, max_age: @max_age, same_site: "Lax"]
 
   @doc """
   Logs the user in.
@@ -28,7 +28,7 @@ defmodule AuthUbGuWeb.UserAuth do
   if you are not using LiveView.
   """
 
-  def log_in_user(conn, user, context, params \\ %{}) do
+  def log_in_user(conn, user, context, _params \\ %{}) do
     conn =
       conn
       |> renew_session()
@@ -40,22 +40,18 @@ defmodule AuthUbGuWeb.UserAuth do
     user_return_to = get_session(conn, :user_return_to)
 
     conn
-    # |> put_token_in_session(token)
-    # TODO: check if we really need to sign in the user via guardian plug
-    # but then there is no harm in doing it
-    # |> Guardian.Plug.sign_in(user)
-    |> maybe_write_remember_me_cookie(token, params)
+    # |> maybe_write_remember_me_cookie(token, params)
     |> redirect(to: user_return_to || signed_in_path(conn))
   end
 
-  defp maybe_write_remember_me_cookie(conn, token, %{"remember_me" => "true"}) do
-    # Guardian.Plug.remember_me(conn, user)
-    put_resp_cookie(conn, @remember_me_cookie, token, @remember_me_options)
-  end
+  # defp maybe_write_remember_me_cookie(conn, token, %{"remember_me" => "true"}) do
+  #   # Guardian.Plug.remember_me(conn, user)
+  #   put_resp_cookie(conn, @remember_me_cookie, token, @remember_me_options)
+  # end
 
-  defp maybe_write_remember_me_cookie(conn, _token, _params) do
-    conn
-  end
+  # defp maybe_write_remember_me_cookie(conn, _token, _params) do
+  #   conn
+  # end
 
   # This function renews the session ID and erases the whole
   # session to avoid fixation attacks. If there is any data
@@ -124,7 +120,7 @@ defmodule AuthUbGuWeb.UserAuth do
 
             # Run background task to verify token in DB
             Task.Supervisor.start_child(AuthUbGu.TaskSupervisor, fn ->
-              validate_token_in_db(token, conn)
+              validate_token_in_db(token, "session", conn)
             end)
 
             # Assign the user immediately
@@ -142,9 +138,9 @@ defmodule AuthUbGuWeb.UserAuth do
 
   # Validates the token in the database as a background task.
   # TODO: check if this method works
-  defp validate_token_in_db(token, conn) do
+  defp validate_token_in_db(token, context, conn) do
     # validate the token in the db and return the user if token is valid
-    case Accounts.get_user_by_session_token(token) do
+    case Accounts.get_user_by_session_token(token, context) do
       nil ->
         # logout the user and revoke the token in the db
         log_out_user(conn)
@@ -240,8 +236,7 @@ defmodule AuthUbGuWeb.UserAuth do
       # this is the benefit of having the same name for session token as the default guardian token name
       # TODO: check if this works
       if user_token = session[Atom.to_string(Accounts.get_auth_token_name())] do
-        dbg(user_token)
-        Accounts.get_user_by_session_token(user_token)
+        Accounts.get_user_by_session_token(user_token, "session")
       end
     end)
   end
