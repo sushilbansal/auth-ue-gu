@@ -14,6 +14,8 @@ defmodule AuthUbGuWeb.ConnCase do
   by setting `use AuthUbGuWeb.ConnCase, async: true`, although
   this option is not recommended for other databases.
   """
+  alias AuthUbGu.Auth.Guardian
+  alias AuthUbGu.Accounts
 
   use ExUnit.CaseTemplate
 
@@ -55,10 +57,12 @@ defmodule AuthUbGuWeb.ConnCase do
   It returns an updated `conn`.
   """
   def log_in_user(conn, user) do
-    token = AuthUbGu.Accounts.generate_user_session_token(user, "session")
+    conn = Guardian.Plug.sign_in(conn, user)
+    token = Guardian.Plug.current_token(conn)
+    Accounts.generate_user_session_token(user, token, "session")
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
-    |> Plug.Conn.put_session(:guardian_default_token, token)
+    |> Plug.Conn.put_session(Accounts.get_auth_token_name(), token)
   end
 end
