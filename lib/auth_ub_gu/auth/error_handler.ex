@@ -1,7 +1,5 @@
 defmodule AuthUbGu.Auth.ErrorHandler do
-  alias AuthUbGuWeb.UserAuth
-  # alias AuthUbGu.Accounts.User
-  # import Plug.Conn
+  alias AuthUbGuWeb.Auth.Logout
   import Phoenix.Controller
 
   @behaviour Guardian.Plug.ErrorHandler
@@ -17,7 +15,7 @@ defmodule AuthUbGu.Auth.ErrorHandler do
 
         conn
         |> put_flash(:error, "Session has expired. Please log in again.")
-        |> UserAuth.log_out_user()
+        |> Logout.log_out_user()
     end
 
     conn

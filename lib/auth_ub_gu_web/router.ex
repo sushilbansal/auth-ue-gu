@@ -1,7 +1,10 @@
 defmodule AuthUbGuWeb.Router do
   use AuthUbGuWeb, :router
 
-  import AuthUbGuWeb.UserAuth
+  import AuthUbGuWeb.Auth.Hooks
+  import AuthUbGuWeb.Auth.FetchCurrentUser
+
+  alias AuthUbGuWeb.Auth
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -62,7 +65,7 @@ defmodule AuthUbGuWeb.Router do
     pipe_through [:browser, :redirect_if_user_is_authenticated]
 
     live_session :redirect_if_user_is_authenticated,
-      on_mount: [{AuthUbGuWeb.UserAuth, :redirect_if_user_is_authenticated}] do
+      on_mount: [{Auth.Hooks, :redirect_if_user_is_authenticated}] do
       live "/users/register", UserRegistrationLive, :new
       live "/users/log_in", UserLoginLive, :new
       live "/users/reset_password", UserForgotPasswordLive, :new
@@ -76,7 +79,7 @@ defmodule AuthUbGuWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :require_authenticated_user,
-      on_mount: [{AuthUbGuWeb.UserAuth, :ensure_authenticated}] do
+      on_mount: [{Auth.Hooks, :ensure_authenticated}] do
       live "/protected", ProtectedLive
 
       live "/users/settings", UserSettingsLive, :edit
@@ -90,7 +93,7 @@ defmodule AuthUbGuWeb.Router do
     delete "/users/log_out", UserSessionController, :delete
 
     live_session :current_user,
-      on_mount: [{AuthUbGuWeb.UserAuth, :mount_current_user}] do
+      on_mount: [{Auth.Hooks, :mount_current_user}] do
       live "/", HomeLive
       live "/users/confirm/:token", UserConfirmationLive, :edit
       live "/users/confirm", UserConfirmationInstructionsLive, :new

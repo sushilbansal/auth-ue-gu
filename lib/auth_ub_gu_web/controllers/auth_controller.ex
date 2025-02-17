@@ -1,7 +1,7 @@
 defmodule AuthUbGuWeb.AuthController do
   use AuthUbGuWeb, :controller
 
-  alias AuthUbGuWeb.UserAuth
+  alias AuthUbGuWeb.Auth.Login
   alias AuthUbGu.Accounts.User
   alias AuthUbGu.Accounts
   alias AuthUbGu.Auth.Guardian
@@ -22,7 +22,7 @@ defmodule AuthUbGuWeb.AuthController do
       {:ok, user} ->
         conn
         |> put_flash(:info, "Logged in successfully")
-        |> UserAuth.log_in_user(user, "session", %{
+        |> Login.log_in_user(user, "session", %{
           "email" => auth.info.email,
           "remember_me" => "true"
         })
