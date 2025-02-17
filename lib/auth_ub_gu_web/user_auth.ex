@@ -15,6 +15,10 @@ defmodule AuthUbGuWeb.UserAuth do
   @remember_me_cookie "_auth_ub_gu_web_user_remember_me"
   @remember_me_options [sign: true, max_age: @max_age, same_site: "Lax"]
 
+  @access_ttl {1, :minute}
+  # @refresh_ttl {5, :minutes}
+  # @remember_me_ttl {30, :minutes}
+
   @doc """
   Logs the user in.
 
@@ -40,10 +44,6 @@ defmodule AuthUbGuWeb.UserAuth do
     user_return_to = get_session(conn, :user_return_to)
 
     conn
-    # |> put_token_in_session(token)
-    # TODO: check if we really need to sign in the user via guardian plug
-    # but then there is no harm in doing it
-    # |> Guardian.Plug.sign_in(user)
     |> maybe_write_remember_me_cookie(token, params)
     |> redirect(to: user_return_to || signed_in_path(conn))
   end
@@ -88,7 +88,9 @@ defmodule AuthUbGuWeb.UserAuth do
   def log_out_user(conn) do
     # user_token = get_session(conn, Accounts.get_auth_token_name())
     # need to get the user token from the guardian plug
-    user_token = Guardian.Plug.current_token(conn)
+    user_token =
+      Guardian.Plug.current_token(conn) || get_session(conn, Accounts.get_auth_token_name())
+
     user_token && Accounts.delete_user_session_token(user_token)
 
     if live_socket_id = get_session(conn, :live_socket_id) do
@@ -97,9 +99,10 @@ defmodule AuthUbGuWeb.UserAuth do
 
     conn
     # remove the user from the guardian plug
-    |> Guardian.Plug.sign_out()
+    |> Guardian.Plug.sign_out(clear_remember_me: true)
     |> renew_session()
     |> delete_resp_cookie(@remember_me_cookie)
+    # |> Guardian.Plug.sign_out(clear_remember_me: true)
     # |> Guardian.Plug.clear_remember_me()
     |> redirect(to: ~p"/")
   end
@@ -123,8 +126,10 @@ defmodule AuthUbGuWeb.UserAuth do
             user = Guardian.Plug.current_resource(conn)
 
             # Run background task to verify token in DB
+            # not relying on the guardian plug to verify the token
+            # user could have been deleted or token revoked
             Task.Supervisor.start_child(AuthUbGu.TaskSupervisor, fn ->
-              validate_token_in_db(token, conn)
+              validate_token_in_db(token, "session", conn)
             end)
 
             # Assign the user immediately
@@ -141,10 +146,15 @@ defmodule AuthUbGuWeb.UserAuth do
   end
 
   # Validates the token in the database as a background task.
-  # TODO: check if this method works
-  defp validate_token_in_db(token, conn) do
+  # user could have been deleted or token revoked.
+  defp validate_token_in_db(token, context, conn) do
+    {validity, interval} = @access_ttl
+
     # validate the token in the db and return the user if token is valid
-    case Accounts.get_user_by_session_token(token) do
+    case Accounts.get_user_by_session_token(token, context,
+           validity: validity,
+           interval: Atom.to_string(interval)
+         ) do
       nil ->
         # logout the user and revoke the token in the db
         log_out_user(conn)
@@ -236,12 +246,11 @@ defmodule AuthUbGuWeb.UserAuth do
   end
 
   defp mount_current_user(socket, session) do
+    # can not use the guardian plug to get the user here
     Phoenix.Component.assign_new(socket, :current_user, fn ->
       # this is the benefit of having the same name for session token as the default guardian token name
-      # TODO: check if this works
       if user_token = session[Atom.to_string(Accounts.get_auth_token_name())] do
-        dbg(user_token)
-        Accounts.get_user_by_session_token(user_token)
+        Accounts.get_user_by_session_token(user_token, "session")
       end
     end)
   end

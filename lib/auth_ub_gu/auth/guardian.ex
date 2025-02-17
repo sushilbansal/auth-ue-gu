@@ -23,4 +23,12 @@ defmodule AuthUbGu.Auth.Guardian do
       user -> {:ok, user}
     end
   end
+
+  def on_revoke(claims, _token, _options) do
+    {:ok, claims}
+  end
+
+  def on_refresh(old_token_and_claims, new_token_and_claims, _options) do
+    {:ok, old_token_and_claims, new_token_and_claims}
+  end
 end

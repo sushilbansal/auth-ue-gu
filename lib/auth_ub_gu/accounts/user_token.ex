@@ -58,11 +58,14 @@ defmodule AuthUbGu.Accounts.UserToken do
   The token is valid if it matches the value in the database and it has
   not expired (after @session_validity_in_days).
   """
-  def verify_session_token_query(token) do
+  def verify_session_token_query(token, context, opts \\ []) do
+    validity = Keyword.get(opts, :validity, @session_validity_in_days)
+    interval = Keyword.get(opts, :interval, "day")
+
     query =
-      from token in by_token_and_context_query(token, "session"),
+      from token in by_token_and_context_query(token, context),
         join: user in assoc(token, :user),
-        where: token.inserted_at > ago(@session_validity_in_days, "day"),
+        where: token.inserted_at > ago(^validity, ^interval),
         select: user
 
     {:ok, query}

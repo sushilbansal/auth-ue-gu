@@ -234,8 +234,8 @@ defmodule AuthUbGu.Accounts do
   @doc """
   Gets the user with the given signed token.
   """
-  def get_user_by_session_token(token) do
-    {:ok, query} = UserToken.verify_session_token_query(token)
+  def get_user_by_session_token(token, context, opts \\ []) do
+    {:ok, query} = UserToken.verify_session_token_query(token, context, opts)
     Repo.one(query)
   end
 
