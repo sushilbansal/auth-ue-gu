@@ -59,7 +59,7 @@ defmodule AuthUbGuWeb.ConnCase do
   def log_in_user(conn, user) do
     conn = Guardian.Plug.sign_in(conn, user)
     token = Guardian.Plug.current_token(conn)
-    Accounts.generate_user_session_token(user, token, "session")
+    Accounts.insert_token(user, token, "session")
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})

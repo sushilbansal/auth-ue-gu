@@ -8,17 +8,16 @@ defmodule AuthUbGuWeb.Auth.FetchCurrentUser do
   alias AuthUbGu.Accounts
   alias AuthUbGuWeb.Auth.Logout
 
-  @access_ttl {1, :minute}
-
   @doc """
   Authenticates the user by looking into the session
   and remember me token.
   """
+  @spec fetch_current_user(Plug.Conn.t(), list()) :: Plug.Conn.t()
   def fetch_current_user(conn, _opts) do
     # want to use the guardian plug to get the user
     # and then run a background task to validate the token
 
-    case ensure_user_token(conn) do
+    case Shared.get_access_token(conn) do
       {nil, conn} ->
         assign(conn, :current_user, nil)
 
@@ -50,13 +49,15 @@ defmodule AuthUbGuWeb.Auth.FetchCurrentUser do
 
   # Validates the token in the database as a background task.
   # user could have been deleted or token revoked.
+  @spec validate_token_in_db(String.t(), String.t(), Plug.Conn.t()) :: :ok
   defp validate_token_in_db(token, context, conn) do
-    {validity, interval} = @access_ttl
+    %{"access" => access_ttl} = Shared.get_guardian_ttl_settings()
 
     # validate the token in the db and return the user if token is valid
-    case Accounts.get_user_by_session_token(token, context,
-           validity: validity,
-           interval: Atom.to_string(interval)
+    case Accounts.get_user_by_session_token(
+           token,
+           context,
+           Shared.convert_ttl_to_db_format(access_ttl)
          ) do
       nil ->
         # logout the user and revoke the token in the db
@@ -64,25 +65,6 @@ defmodule AuthUbGuWeb.Auth.FetchCurrentUser do
 
       _ ->
         :ok
-    end
-  end
-
-  # since we are using guardian plug to get the user
-  # we need to fetch the token from the guardian plug or cookies
-  defp ensure_user_token(conn) do
-    cookie_settings = Shared.get_access_cookie_settings()
-    %{remember_me_cookie: remember_me_cookie} = cookie_settings
-    # if token = get_session(conn, Accounts.get_auth_token_name()) do
-    if token = Guardian.Plug.current_token(conn) do
-      {token, conn}
-    else
-      conn = fetch_cookies(conn, signed: [remember_me_cookie])
-
-      if token = conn.cookies[remember_me_cookie] do
-        {token, Shared.put_token_in_session(conn, token)}
-      else
-        {nil, conn}
-      end
     end
   end
 end

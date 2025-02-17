@@ -224,7 +224,7 @@ defmodule AuthUbGu.Accounts do
   @doc """
   Generates a session token.
   """
-  def generate_user_session_token(user, token, context) do
+  def insert_token(user, token, context) do
     # {:ok, token, _claims} = Guardian.encode_and_sign(user)
     user_token = UserToken.build_auth_token(user, token, context)
     Repo.insert!(user_token)
