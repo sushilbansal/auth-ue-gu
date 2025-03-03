@@ -4,6 +4,7 @@ defmodule AuthUbGu.Accounts do
   """
 
   import Ecto.Query, warn: false
+  alias AuthUbGuWeb.Auth.Shared
   alias AuthUbGu.Auth.Guardian
   alias AuthUbGu.Repo
 
@@ -222,7 +223,7 @@ defmodule AuthUbGu.Accounts do
   ## Session
 
   @doc """
-  Generates a session token.
+  takes the token,  and just inserts in the db
   """
   def insert_token(user, token, context) do
     # {:ok, token, _claims} = Guardian.encode_and_sign(user)
@@ -234,8 +235,17 @@ defmodule AuthUbGu.Accounts do
   @doc """
   Gets the user with the given signed token.
   """
-  def get_user_by_session_token(token, context, opts \\ []) do
-    {:ok, query} = UserToken.verify_session_token_query(token, context, opts)
+  def get_user_by_session_token(token, context) do
+    %{access: %{db: {validity, interval}}} = Shared.get_guardian_ttl_settings()
+
+    {:ok, query} =
+      UserToken.verify_session_token_query(
+        token,
+        context,
+        validity: validity,
+        interval: interval
+      )
+
     Repo.one(query)
   end
 
@@ -243,6 +253,7 @@ defmodule AuthUbGu.Accounts do
   Deletes the signed token with the given context.
   """
   def delete_user_session_token(token) do
+    token = UserToken.hash_token(token)
     Repo.delete_all(UserToken.by_token_and_context_query(token, "session"))
     :ok
   end

@@ -33,6 +33,7 @@ defmodule AuthUbGuWeb.Auth.Login do
     |> after_sign_in_redirect()
   end
 
+  # inserts the token in the database
   defp insert_token_in_db(conn, user, context) do
     Accounts.insert_token(user, get_token_from_guardian(conn), context)
     conn
@@ -44,7 +45,7 @@ defmodule AuthUbGuWeb.Auth.Login do
 
   @spec guardian_sign_in(Plug.Conn.t(), Accounts.User.t()) :: Plug.Conn.t()
   defp guardian_sign_in(conn, user) do
-    %{"access" => access_ttl} = Shared.get_guardian_ttl_settings()
+    %{access: %{session: access_ttl}} = Shared.get_guardian_ttl_settings()
 
     conn
     |> Guardian.Plug.sign_in(user, %{}, ttl: access_ttl)

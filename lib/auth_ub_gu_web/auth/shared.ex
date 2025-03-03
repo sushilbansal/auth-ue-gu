@@ -25,19 +25,21 @@ defmodule AuthUbGuWeb.Auth.Shared do
   """
   @spec get_guardian_ttl_settings() :: map()
   def get_guardian_ttl_settings do
+    # for db - can't use plurals like minutes, days etc
     %{
-      "access" => {1, :minute},
-      "refresh" => {5, :minutes},
-      "remember_me" => {30, :minutes}
+      access: %{
+        db: {2, "minute"},
+        session: {2, :minutes}
+      },
+      refresh: %{
+        db: {5, "minute"},
+        session: {5, :minutes}
+      },
+      remember_me: %{
+        db: {30, "minute"},
+        session: {30, :minutes}
+      }
     }
-  end
-
-  @doc """
-  Convert the TTL settings to the database format.
-  """
-  @spec convert_ttl_to_db_format(tuple()) :: list()
-  def convert_ttl_to_db_format({validity, interval}) do
-    [validity: validity, interval: Atom.to_string(interval)]
   end
 
   @doc """
@@ -113,7 +115,7 @@ defmodule AuthUbGuWeb.Auth.Shared do
 
   @spec put_guardian_session_token(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   defp put_guardian_session_token(conn, token) do
-    %{"access" => access_ttl} = get_guardian_ttl_settings()
+    %{access: %{session: access_ttl}} = get_guardian_ttl_settings()
 
     conn
     |> Guardian.Plug.put_session_token(token, ttl: access_ttl)

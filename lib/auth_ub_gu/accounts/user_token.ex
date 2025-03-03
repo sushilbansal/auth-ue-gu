@@ -46,7 +46,11 @@ defmodule AuthUbGu.Accounts.UserToken do
     # , %UserToken{token: token, context: "session", user_id: user.id}
   end
 
+  @doc """
+  hash the token and returns a user token struct
+  """
   def build_auth_token(user, token, context) do
+    token = Bcrypt.hash_pwd_salt(token)
     %UserToken{token: token, context: context, user_id: user.id}
   end
 
@@ -59,16 +63,24 @@ defmodule AuthUbGu.Accounts.UserToken do
   not expired (after @session_validity_in_days).
   """
   def verify_session_token_query(token, context, opts \\ []) do
+    hashed_token = hash_token(token)
     validity = Keyword.get(opts, :validity, @session_validity_in_days)
     interval = Keyword.get(opts, :interval, "day")
 
     query =
-      from token in by_token_and_context_query(token, context),
+      from token in by_token_and_context_query(hashed_token, context),
         join: user in assoc(token, :user),
         where: token.inserted_at > ago(^validity, ^interval),
         select: user
 
     {:ok, query}
+  end
+
+  @doc """
+  hash the token
+  """
+  def hash_token(token) do
+    Bcrypt.hash_pwd_salt(token)
   end
 
   @doc """

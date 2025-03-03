@@ -14,14 +14,23 @@ defmodule AuthUbGuWeb.Auth.Logout do
   It clears all session data for safety. See renew_session.
   """
   @spec log_out_user(Plug.Conn.t()) :: Plug.Conn.t()
-  def log_out_user(conn) do
+  def log_out_user(conn, opts \\ []) do
     conn
     |> disconnect_live_socket()
     |> delete_token_from_db()
     |> guardian_sign_out()
     |> Shared.renew_session()
     |> delete_all_cookies()
-    |> redirect(to: ~p"/")
+    |> redirect_after_logout(opts)
+  end
+
+  defp redirect_after_logout(conn, opts) do
+    if Keyword.get(opts, :redirect_after_logout, true) do
+      conn
+      |> redirect(to: ~p"/")
+    else
+      conn
+    end
   end
 
   defp disconnect_live_socket(conn) do
