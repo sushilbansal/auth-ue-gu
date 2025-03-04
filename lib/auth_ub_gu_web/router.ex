@@ -13,7 +13,7 @@ defmodule AuthUbGuWeb.Router do
     plug :put_root_layout, html: {AuthUbGuWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
-    plug AuthUbGu.Auth.Pipeline
+    # plug AuthUbGu.Auth.Pipeline
     plug :fetch_current_user
   end
 

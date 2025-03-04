@@ -2,7 +2,7 @@ defmodule AuthUbGuWeb.Auth.FetchCurrentUser do
   use AuthUbGuWeb, :verified_routes
 
   import Plug.Conn
-  alias AuthUbGuWeb.Auth.Shared
+  alias AuthUbGuWeb.Auth.Token
   alias AuthUbGu.Auth.Guardian
 
   alias AuthUbGu.Accounts
@@ -16,27 +16,22 @@ defmodule AuthUbGuWeb.Auth.FetchCurrentUser do
   def fetch_current_user(conn, _opts) do
     # want to use the guardian plug to get the user
     # and then run a background task to validate the token
-    case Shared.get_access_token(conn) do
-      {nil, conn} ->
-        assign(conn, :current_user, nil)
-
-      {token, conn} ->
-        case Guardian.decode_and_verify(token) do
-          {:ok, _claims} ->
-            # get the user from the guardian plug
-            user = Guardian.Plug.current_resource(conn)
+    case Token.get_access_token_from_session_or_refresh_token(conn) do
+      {conn, token} when not is_nil(token) ->
+        case Guardian.resource_from_token(token) do
+          {:ok, user, _claims} ->
+            # Assign the user immediately
+            assign(conn, :current_user, user)
 
             # Run background task to verify token in DB
             # not relying on the guardian plug to verify the token
             # user could have been deleted or token revoked
+            # TODO: check if we need it here or somewhere else
             Task.Supervisor.start_child(AuthUbGu.TaskSupervisor, fn ->
               validate_token_in_db(token, "session", conn)
             end)
 
-            # Assign the user immediately
-            assign(conn, :current_user, user)
-
-          _ ->
+          {:error, _} ->
             assign(conn, :current_user, nil)
         end
     end

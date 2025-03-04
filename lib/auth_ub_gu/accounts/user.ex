@@ -168,7 +168,7 @@ defmodule AuthUbGu.Accounts.User do
   @doc """
   A user changeset for OAuth registration.
   """
-  def oauth_changeset(user, attrs, opts) do
+  def oauth_changeset(user, attrs, opts \\ []) do
     user
     |> cast(attrs, [:email, :name, :provider, :provider_uid])
     |> validate_required([:email, :name, :provider, :provider_uid])

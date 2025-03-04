@@ -23,21 +23,21 @@ defmodule AuthUbGuWeb.Auth.Shared do
   @doc """
   Get the guardian TTL settings.
   """
-  @spec get_guardian_ttl_settings() :: map()
-  def get_guardian_ttl_settings do
+  @spec get_ttl_settings() :: map()
+  def get_ttl_settings do
     # for db - can't use plurals like minutes, days etc
     %{
       access: %{
         db: {2, "minute"},
-        session: {2, :minutes}
+        guardian: {2, :minutes}
       },
       refresh: %{
         db: {5, "minute"},
-        session: {5, :minutes}
+        guardian: {5, :minutes}
       },
       remember_me: %{
         db: {30, "minute"},
-        session: {30, :minutes}
+        guardian: {30, :minutes}
       }
     }
   end
@@ -67,58 +67,21 @@ defmodule AuthUbGuWeb.Auth.Shared do
     |> clear_session()
   end
 
-  @doc """
-  Get the access token from the guardian plug or cookies.
-  """
-  @spec get_access_token(Plug.Conn.t()) :: {String.t() | nil, Plug.Conn.t()}
-  def get_access_token(conn) do
-    if token = get_access_token_from_guardian(conn) do
-      {token, conn}
-    else
-      if token = get_access_token_from_cookies(conn) do
-        {token, put_access_token_in_session(conn, token)}
-      else
-        {nil, conn}
-      end
-    end
+  @spec maybe_write_remember_me_cookie(Plug.Conn.t(), String.t(), map()) :: Plug.Conn.t()
+  def maybe_write_remember_me_cookie(conn, refresh_token, %{"remember_me" => "true"}) do
+    %{remember_me_cookie: remember_me_cookie, remember_me_options: remember_me_options} =
+      get_access_cookie_settings()
+
+    put_resp_cookie(
+      conn,
+      remember_me_cookie,
+      refresh_token,
+      remember_me_options
+    )
   end
 
-  @spec get_access_token_from_guardian(Plug.Conn.t()) :: String.t() | nil
-  defp get_access_token_from_guardian(conn) do
-    Guardian.Plug.current_token(conn)
-  end
-
-  # this function is similar to get_access_token_from_guardian
-  # as we maintain session through guardian plug
-  # defp get_access_token_from_session(conn) do
-  #   get_session(conn, Accounts.get_auth_token_name())
-  # end
-  @spec get_access_token_from_cookies(Plug.Conn.t()) :: String.t() | nil
-  defp get_access_token_from_cookies(conn) do
-    %{remember_me_cookie: remember_me_cookie} = get_access_cookie_settings()
-
-    conn = fetch_cookies(conn, signed: [remember_me_cookie])
-    conn.cookies[remember_me_cookie]
-  end
-
-  @doc """
-  Put the access token in the session.
-  """
-  @spec put_access_token_in_session(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
-  def put_access_token_in_session(conn, token) do
-    live_socket_id = Base.url_encode64(token) |> String.slice(0, 16)
-
+  def maybe_write_remember_me_cookie(conn, _refresh_token, _params) do
     conn
-    |> put_guardian_session_token(token)
-    |> put_session(:live_socket_id, "users_sessions:#{live_socket_id}")
-  end
-
-  @spec put_guardian_session_token(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
-  defp put_guardian_session_token(conn, token) do
-    %{access: %{session: access_ttl}} = get_guardian_ttl_settings()
-
-    conn
-    |> Guardian.Plug.put_session_token(token, ttl: access_ttl)
   end
 
   @doc """

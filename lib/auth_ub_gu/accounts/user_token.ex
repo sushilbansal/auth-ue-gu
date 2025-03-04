@@ -47,10 +47,10 @@ defmodule AuthUbGu.Accounts.UserToken do
   end
 
   @doc """
-  hash the token and returns a user token struct
+  creates the user token struct and returns the same
   """
-  def build_auth_token(user, token, context) do
-    token = Bcrypt.hash_pwd_salt(token)
+  def build_token(user, token, context) do
+    # token = Bcrypt.hash_pwd_salt(token)
     %UserToken{token: token, context: context, user_id: user.id}
   end
 

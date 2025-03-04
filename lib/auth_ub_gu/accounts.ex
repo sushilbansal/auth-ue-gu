@@ -227,7 +227,7 @@ defmodule AuthUbGu.Accounts do
   """
   def insert_token(user, token, context) do
     # {:ok, token, _claims} = Guardian.encode_and_sign(user)
-    user_token = UserToken.build_auth_token(user, token, context)
+    user_token = UserToken.build_token(user, token, context)
     Repo.insert!(user_token)
     token
   end
@@ -236,7 +236,7 @@ defmodule AuthUbGu.Accounts do
   Gets the user with the given signed token.
   """
   def get_user_by_session_token(token, context) do
-    %{access: %{db: {validity, interval}}} = Shared.get_guardian_ttl_settings()
+    %{access: %{db: {validity, interval}}} = Shared.get_ttl_settings()
 
     {:ok, query} =
       UserToken.verify_session_token_query(
@@ -252,10 +252,14 @@ defmodule AuthUbGu.Accounts do
   @doc """
   Deletes the signed token with the given context.
   """
-  def delete_user_session_token(token) do
-    token = UserToken.hash_token(token)
-    Repo.delete_all(UserToken.by_token_and_context_query(token, "session"))
+  def delete_user_token(token, context) do
+    Repo.delete_all(UserToken.by_token_and_context_query(token, context))
     :ok
+  end
+
+  def is_token_valid(token, context) do
+    {:ok, query} = UserToken.verify_session_token_query(token, context)
+    Repo.exists?(query)
   end
 
   ## Confirmation
@@ -384,13 +388,13 @@ defmodule AuthUbGu.Accounts do
         attrs = %{email: email, name: name, provider_uid: uid, provider: provider}
 
         %User{}
-        |> User.oauth_changeset(attrs, [])
+        |> User.oauth_changeset(attrs)
         |> Repo.insert()
 
       # If found and has no OAuth provider linked, update it with provider and provider_uid.
       %User{provider: nil, provider_uid: nil} = user ->
         user
-        |> User.oauth_changeset(%{provider_uid: uid, provider: provider}, [])
+        |> User.oauth_changeset(%{provider_uid: uid, provider: provider})
         |> Repo.update()
 
       # If found but already linked, just return the user.

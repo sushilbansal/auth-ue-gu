@@ -3,6 +3,7 @@ defmodule AuthUbGuWeb.Auth.Logout do
 
   import Plug.Conn
   import Phoenix.Controller
+  alias AuthUbGuWeb.Auth.Token
   alias AuthUbGuWeb.Auth.Shared
   alias AuthUbGu.Auth.Guardian
 
@@ -13,11 +14,11 @@ defmodule AuthUbGuWeb.Auth.Logout do
 
   It clears all session data for safety. See renew_session.
   """
-  @spec log_out_user(Plug.Conn.t()) :: Plug.Conn.t()
+  @spec log_out_user(Plug.Conn.t(), list()) :: Plug.Conn.t()
   def log_out_user(conn, opts \\ []) do
     conn
     |> disconnect_live_socket()
-    |> delete_token_from_db()
+    |> delete_refresh_token_from_db()
     |> guardian_sign_out()
     |> Shared.renew_session()
     |> delete_all_cookies()
@@ -41,9 +42,9 @@ defmodule AuthUbGuWeb.Auth.Logout do
     conn
   end
 
-  defp delete_token_from_db(conn) do
-    {token, conn} = Shared.get_access_token(conn)
-    token && Accounts.delete_user_session_token(token)
+  defp delete_refresh_token_from_db(conn) do
+    refresh_token = Token.get_refresh_token_from_session_or_cookies(conn)
+    refresh_token && Accounts.delete_user_token(refresh_token, "refresh")
     conn
   end
 

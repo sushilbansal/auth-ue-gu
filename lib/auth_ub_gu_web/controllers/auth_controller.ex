@@ -22,8 +22,7 @@ defmodule AuthUbGuWeb.AuthController do
       {:ok, user} ->
         conn
         |> put_flash(:info, "Logged in successfully")
-        |> Login.log_in_user(user, "session", %{
-          "email" => auth.info.email,
+        |> Login.log_in_user(user, %{
           "remember_me" => "true"
         })
 
