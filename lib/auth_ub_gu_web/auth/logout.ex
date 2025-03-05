@@ -5,7 +5,6 @@ defmodule AuthUbGuWeb.Auth.Logout do
   import Phoenix.Controller
   alias AuthUbGuWeb.Auth.Token
   alias AuthUbGuWeb.Auth.Shared
-  alias AuthUbGu.Auth.Guardian
 
   alias AuthUbGu.Accounts
 
@@ -19,7 +18,6 @@ defmodule AuthUbGuWeb.Auth.Logout do
     conn
     |> disconnect_live_socket()
     |> delete_refresh_token_from_db()
-    |> guardian_sign_out()
     |> Shared.renew_session()
     |> delete_all_cookies()
     |> redirect_after_logout(opts)
@@ -46,10 +44,6 @@ defmodule AuthUbGuWeb.Auth.Logout do
     refresh_token = Token.get_refresh_token_from_session_or_cookies(conn)
     refresh_token && Accounts.delete_user_token(refresh_token, "refresh")
     conn
-  end
-
-  defp guardian_sign_out(conn) do
-    Guardian.Plug.sign_out(conn, clear_remember_me: true)
   end
 
   defp delete_all_cookies(conn) do

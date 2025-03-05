@@ -14,7 +14,7 @@ defmodule AuthUbGu.Accounts.UserToken do
   @session_validity_in_days 60
 
   schema "users_tokens" do
-    field :token, :string
+    field :token, :binary
     field :context, :string
     field :sent_to, :string
     belongs_to :user, AuthUbGu.Accounts.User
@@ -47,10 +47,10 @@ defmodule AuthUbGu.Accounts.UserToken do
   end
 
   @doc """
-  creates the user token struct and returns the same
+  hash the token, creates the user token struct and returns the same
   """
   def build_token(user, token, context) do
-    # token = Bcrypt.hash_pwd_salt(token)
+    token = hash_token(token)
     %UserToken{token: token, context: context, user_id: user.id}
   end
 
@@ -62,6 +62,7 @@ defmodule AuthUbGu.Accounts.UserToken do
   The token is valid if it matches the value in the database and it has
   not expired (after @session_validity_in_days).
   """
+  @spec verify_session_token_query(String.t(), String.t(), Keyword.t()) :: {:ok, Ecto.Query.t()}
   def verify_session_token_query(token, context, opts \\ []) do
     hashed_token = hash_token(token)
     validity = Keyword.get(opts, :validity, @session_validity_in_days)
@@ -80,7 +81,7 @@ defmodule AuthUbGu.Accounts.UserToken do
   hash the token
   """
   def hash_token(token) do
-    Bcrypt.hash_pwd_salt(token)
+    :crypto.hash(@hash_algorithm, token)
   end
 
   @doc """

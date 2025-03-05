@@ -22,7 +22,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
   describe "log_in_user/3" do
     test "stores the user token in the session", %{conn: conn, user: user} do
       conn = Login.log_in_user(conn, user, "session")
-      assert token = get_session(conn, Accounts.get_auth_token_name())
+      assert token = get_session(conn, :access_token)
       assert get_session(conn, :live_socket_id) == "users_sessions:#{Base.url_encode64(token)}"
       assert redirected_to(conn) == ~p"/"
       assert Accounts.get_user_by_session_token(token)
@@ -46,11 +46,11 @@ defmodule AuthUbGuWeb.UserAuthTest do
         |> fetch_cookies()
         |> Login.log_in_user(user, "session", %{"remember_me" => "true"})
 
-      assert get_session(conn, Accounts.get_auth_token_name()) ==
+      assert get_session(conn, :access_token) ==
                conn.cookies[@remember_me_cookie]
 
       assert %{value: signed_token, max_age: max_age} = conn.resp_cookies[@remember_me_cookie]
-      assert signed_token != get_session(conn, Accounts.get_auth_token_name())
+      assert signed_token != get_session(conn, :access_token)
       assert max_age == 5_184_000
     end
   end
@@ -61,12 +61,12 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
       conn =
         conn
-        |> put_session(Accounts.get_auth_token_name(), user_token)
+        |> put_session(:access_token, user_token)
         |> put_req_cookie(@remember_me_cookie, user_token)
         |> fetch_cookies()
         |> Logout.log_out_user()
 
-      refute get_session(conn, Accounts.get_auth_token_name())
+      refute get_session(conn, :access_token)
       refute conn.cookies[@remember_me_cookie]
       assert %{max_age: 0} = conn.resp_cookies[@remember_me_cookie]
       assert redirected_to(conn) == ~p"/"
@@ -86,7 +86,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
     test "works even if user is already logged out", %{conn: conn} do
       conn = conn |> fetch_cookies() |> Logout.log_out_user()
-      refute get_session(conn, Accounts.get_auth_token_name())
+      refute get_session(conn, :access_token)
       assert %{max_age: 0} = conn.resp_cookies[@remember_me_cookie]
       assert redirected_to(conn) == ~p"/"
     end
@@ -98,7 +98,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
       conn =
         conn
-        |> put_session(Accounts.get_auth_token_name(), user_token)
+        |> put_session(:access_token, user_token)
         |> FetchCurrentUser.fetch_current_user([])
 
       assert conn.assigns.current_user.id == user.id
@@ -119,7 +119,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
         |> FetchCurrentUser.fetch_current_user([])
 
       assert conn.assigns.current_user.id == user.id
-      assert get_session(conn, Accounts.get_auth_token_name()) == user_token
+      assert get_session(conn, :access_token) == user_token
 
       assert get_session(conn, :live_socket_id) ==
                "users_sessions:#{Base.url_encode64(user_token)}"
@@ -128,7 +128,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
     test "does not authenticate if data is missing", %{conn: conn, user: user} do
       _ = Accounts.insert_token(user)
       conn = FetchCurrentUser.fetch_current_user(conn, [])
-      refute get_session(conn, Accounts.get_auth_token_name())
+      refute get_session(conn, :access_token)
       refute conn.assigns.current_user
     end
   end
@@ -136,7 +136,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
   describe "on_mount :mount_current_user" do
     test "assigns current_user based on a valid user_token", %{conn: conn, user: user} do
       user_token = Accounts.insert_token(user)
-      session = conn |> put_session(Accounts.get_auth_token_name(), user_token) |> get_session()
+      session = conn |> put_session(:access_token, user_token) |> get_session()
 
       {:cont, updated_socket} =
         Auth.Hooks.on_mount(:mount_current_user, %{}, session, %LiveView.Socket{})
@@ -146,7 +146,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
     test "assigns nil to current_user assign if there isn't a valid user_token", %{conn: conn} do
       user_token = "invalid_token"
-      session = conn |> put_session(Accounts.get_auth_token_name(), user_token) |> get_session()
+      session = conn |> put_session(:access_token, user_token) |> get_session()
 
       {:cont, updated_socket} =
         Auth.Hooks.on_mount(:mount_current_user, %{}, session, %LiveView.Socket{})
@@ -167,7 +167,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
   describe "on_mount :ensure_authenticated" do
     test "authenticates current_user based on a valid user_token", %{conn: conn, user: user} do
       user_token = Accounts.insert_token(user)
-      session = conn |> put_session(Accounts.get_auth_token_name(), user_token) |> get_session()
+      session = conn |> put_session(:access_token, user_token) |> get_session()
 
       {:cont, updated_socket} =
         Auth.Hooks.on_mount(:ensure_authenticated, %{}, session, %LiveView.Socket{})
@@ -177,7 +177,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
     test "redirects to login page if there isn't a valid user_token", %{conn: conn} do
       user_token = "invalid_token"
-      session = conn |> put_session(Accounts.get_auth_token_name(), user_token) |> get_session()
+      session = conn |> put_session(:access_token, user_token) |> get_session()
 
       socket = %LiveView.Socket{
         endpoint: AuthUbGuWeb.Endpoint,
@@ -204,7 +204,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
   describe "on_mount :redirect_if_user_is_authenticated" do
     test "redirects if there is an authenticated  user ", %{conn: conn, user: user} do
       user_token = Accounts.insert_token(user)
-      session = conn |> put_session(Accounts.get_auth_token_name(), user_token) |> get_session()
+      session = conn |> put_session(:access_token, user_token) |> get_session()
 
       assert {:halt, _updated_socket} =
                Auth.Hooks.on_mount(

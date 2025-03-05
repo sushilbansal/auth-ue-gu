@@ -3,9 +3,9 @@ defmodule AuthUbGuWeb.Auth.Hooks do
 
   import Plug.Conn
   import Phoenix.Controller
+  alias AuthUbGu.Auth.Guardian
+  alias AuthUbGuWeb.Auth.Logout
   alias AuthUbGuWeb.Auth.Shared
-
-  alias AuthUbGu.Accounts
 
   @doc """
   Handles mounting and authenticating the current_user in LiveViews.
@@ -46,6 +46,9 @@ defmodule AuthUbGuWeb.Auth.Hooks do
     {:cont, mount_current_user(socket, session)}
   end
 
+  # executes in live view - no access to cookies
+  # usually the user will not be in session if it is logged out in other tab
+  # generally issue with current_user should be handled in the require_authenticated_user function
   def on_mount(:ensure_authenticated, _params, session, socket) do
     socket = mount_current_user(socket, session)
 
@@ -71,12 +74,19 @@ defmodule AuthUbGuWeb.Auth.Hooks do
     end
   end
 
+  # it is used in the on_mount callback. so no access to cookies.
+  # we need to get the user from the refresh token which is stored in session and db
   defp mount_current_user(socket, session) do
-    # can not use the guardian plug to get the user here
     Phoenix.Component.assign_new(socket, :current_user, fn ->
-      # this is the benefit of having the same name for session token as the default guardian token name
-      if user_token = session[Atom.to_string(Accounts.get_auth_token_name())] do
-        Accounts.get_user_by_session_token(user_token, "session")
+      # we store refresh token in db; need to get user by refresh token in this case
+      # TOTHINK: may be we can store access token in the db as well and use that here
+      # if refresh_token = session["refresh_token"] do
+      #   Accounts.get_user_by_refresh_token(refresh_token, "refresh")
+      # end
+      # or use guardian to get the user from the access token
+      if access_token = session["access_token"] do
+        {:ok, user, _claims} = Guardian.resource_from_token(access_token)
+        user
       end
     end)
   end
@@ -106,6 +116,8 @@ defmodule AuthUbGuWeb.Auth.Hooks do
     else
       conn
       |> put_flash(:error, "You must log in to access this page.")
+      # if the user is not logged in, we need to clear the session, cookies and delete refresh token from db
+      |> Logout.log_out_user(redirect_after_logout: false)
       |> Shared.maybe_store_return_to()
       |> redirect(to: ~p"/users/log_in")
       |> halt()

@@ -14,7 +14,7 @@ defmodule AuthUbGuWeb.UserSessionControllerTest do
           "user" => %{"email" => user.email, "password" => valid_user_password()}
         })
 
-      assert get_session(conn, Accounts.get_auth_token_name())
+      assert get_session(conn, :access_token)
       assert redirected_to(conn) == ~p"/"
 
       # Now do a logged in request and assert on the menu
@@ -99,14 +99,14 @@ defmodule AuthUbGuWeb.UserSessionControllerTest do
     test "logs the user out", %{conn: conn, user: user} do
       conn = conn |> log_in_user(user) |> delete(~p"/users/log_out")
       assert redirected_to(conn) == ~p"/"
-      refute get_session(conn, Accounts.get_auth_token_name())
+      refute get_session(conn, :access_token)
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Logged out successfully"
     end
 
     test "succeeds even if the user is not logged in", %{conn: conn} do
       conn = delete(conn, ~p"/users/log_out")
       assert redirected_to(conn) == ~p"/"
-      refute get_session(conn, Accounts.get_auth_token_name())
+      refute get_session(conn, :access_token)
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Logged out successfully"
     end
   end

@@ -37,7 +37,7 @@ defmodule AuthUbGuWeb.UserConfirmationLiveTest do
                "User confirmed successfully"
 
       assert Accounts.get_user!(user.id).confirmed_at
-      refute get_session(conn, Accounts.get_auth_token_name())
+      refute get_session(conn, :access_token)
       assert Repo.all(Accounts.UserToken) == []
 
       # when not logged in

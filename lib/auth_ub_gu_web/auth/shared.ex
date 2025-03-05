@@ -4,19 +4,23 @@ defmodule AuthUbGuWeb.Auth.Shared do
   import Plug.Conn
   import Phoenix.Controller
 
-  @max_age 60 * 60 * 24 * 60
-  @remember_me_cookie "_auth_ub_gu_web_user_remember_me"
-  @remember_me_options [sign: true, max_age: @max_age, same_site: "Lax"]
-
   @doc """
   Get the access cookie settings.
   """
   @spec get_access_cookie_settings() :: map()
   def get_access_cookie_settings do
+    max_age = 60 * 60 * 24 * 60
+
     %{
-      max_age: @max_age,
-      remember_me_cookie: @remember_me_cookie,
-      remember_me_options: @remember_me_options
+      max_age: max_age,
+      remember_me_cookie: "_auth_ub_gu_web_user_remember_me",
+      remember_me_options: [
+        sign: true,
+        max_age: max_age,
+        same_site: "Lax",
+        http_only: true,
+        secure: true
+      ]
     }
   end
 
@@ -28,16 +32,12 @@ defmodule AuthUbGuWeb.Auth.Shared do
     # for db - can't use plurals like minutes, days etc
     %{
       access: %{
-        db: {2, "minute"},
-        guardian: {2, :minutes}
-      },
-      refresh: %{
         db: {5, "minute"},
         guardian: {5, :minutes}
       },
-      remember_me: %{
-        db: {30, "minute"},
-        guardian: {30, :minutes}
+      refresh: %{
+        db: {60, "minute"},
+        guardian: {60, :minutes}
       }
     }
   end

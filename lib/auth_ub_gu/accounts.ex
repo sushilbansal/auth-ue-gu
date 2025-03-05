@@ -10,9 +10,6 @@ defmodule AuthUbGu.Accounts do
 
   alias AuthUbGu.Accounts.{User, UserToken, UserNotifier}
 
-  @auth_token_name :guardian_default_token
-
-  def get_auth_token_name, do: @auth_token_name
   ## Database getters
 
   @doc """
@@ -257,8 +254,16 @@ defmodule AuthUbGu.Accounts do
     :ok
   end
 
+  @spec is_token_valid(String.t(), String.t()) :: boolean()
   def is_token_valid(token, context) do
-    {:ok, query} = UserToken.verify_session_token_query(token, context)
+    %{refresh: %{db: {validity, interval}}} = Shared.get_ttl_settings()
+
+    {:ok, query} =
+      UserToken.verify_session_token_query(token, context,
+        validity: validity,
+        interval: interval
+      )
+
     Repo.exists?(query)
   end
 
