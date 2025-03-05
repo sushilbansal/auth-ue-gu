@@ -60,11 +60,15 @@ defmodule AuthUbGuWeb.Auth.Shared do
   """
   @spec renew_session(Plug.Conn.t()) :: Plug.Conn.t()
   def renew_session(conn) do
-    delete_csrf_token()
+    if get_session(conn, :access_token) || get_session(conn, :refresh_token) do
+      delete_csrf_token()
 
-    conn
-    |> configure_session(renew: true)
-    |> clear_session()
+      conn
+      |> configure_session(renew: true)
+      |> clear_session()
+    else
+      conn
+    end
   end
 
   @spec maybe_write_remember_me_cookie(Plug.Conn.t(), String.t(), map()) :: Plug.Conn.t()

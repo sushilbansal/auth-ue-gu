@@ -36,22 +36,6 @@ defmodule AuthUbGuWeb.Auth.Token do
             {put_access_token_in_session(conn, new_access_token), new_access_token}
         end
     end
-
-    # # initial access token is invalid
-    # with {:error, _reason} <- Guardian.decode_and_verify(access_token),
-    #      # could not generate a new one from the refresh token
-    #      {conn, nil} <- generate_access_token_from_refresh_token(conn, refresh_token) do
-    #   {conn, nil}
-    # else
-    #   # access token is valid (using Guardian.decode_and_verify) - return it
-    #   {:ok, _claims} ->
-    #     {conn, access_token}
-
-    #   # 1) initial access token is invalid
-    #   # 2) so generated a new valid one from the refresh token
-    #   {conn, new_access_token} ->
-    #     {put_access_token_in_session(conn, new_access_token), new_access_token}
-    # end
   end
 
   @doc """
@@ -142,7 +126,6 @@ defmodule AuthUbGuWeb.Auth.Token do
   def insert_refresh_token_in_db(conn, user, refresh_token) do
     # TODO: need to get the device info from the request headers
     # and store it in the user token table
-
     Accounts.insert_token(user, refresh_token, "refresh")
     conn
   end

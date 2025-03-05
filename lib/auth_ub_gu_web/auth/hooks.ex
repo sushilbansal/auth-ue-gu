@@ -75,18 +75,14 @@ defmodule AuthUbGuWeb.Auth.Hooks do
   end
 
   # it is used in the on_mount callback. so no access to cookies.
-  # we need to get the user from the refresh token which is stored in session and db
   defp mount_current_user(socket, session) do
     Phoenix.Component.assign_new(socket, :current_user, fn ->
-      # we store refresh token in db; need to get user by refresh token in this case
-      # TOTHINK: may be we can store access token in the db as well and use that here
-      # if refresh_token = session["refresh_token"] do
-      #   Accounts.get_user_by_refresh_token(refresh_token, "refresh")
-      # end
-      # or use guardian to get the user from the access token
+      # use guardian to get the user from the access token
       if access_token = session["access_token"] do
-        {:ok, user, _claims} = Guardian.resource_from_token(access_token)
-        user
+        case Guardian.resource_from_token(access_token) do
+          {:ok, user, _claims} -> user
+          _ -> nil
+        end
       end
     end)
   end
