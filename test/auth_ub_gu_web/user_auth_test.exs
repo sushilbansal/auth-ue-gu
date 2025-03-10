@@ -1,6 +1,7 @@
 defmodule AuthUbGuWeb.UserAuthTest do
   use AuthUbGuWeb.ConnCase, async: true
 
+  alias AuthUbGuWeb.Auth.Hooks
   alias AuthUbGuWeb.Auth.FetchCurrentUser
   alias AuthUbGuWeb.Auth.Logout
   alias AuthUbGuWeb.Auth.Login
@@ -99,7 +100,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
       conn =
         conn
         |> put_session(:access_token, user_token)
-        |> FetchCurrentUser.fetch_current_user([])
+        |> Hooks.fetch_current_user([])
 
       assert conn.assigns.current_user.id == user.id
     end
@@ -116,7 +117,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
       conn =
         conn
         |> put_req_cookie(@remember_me_cookie, signed_token)
-        |> FetchCurrentUser.fetch_current_user([])
+        |> Hooks.fetch_current_user([])
 
       assert conn.assigns.current_user.id == user.id
       assert get_session(conn, :access_token) == user_token
@@ -127,7 +128,7 @@ defmodule AuthUbGuWeb.UserAuthTest do
 
     test "does not authenticate if data is missing", %{conn: conn, user: user} do
       _ = Accounts.insert_token(user)
-      conn = FetchCurrentUser.fetch_current_user(conn, [])
+      conn = Hooks.fetch_current_user(conn, [])
       refute get_session(conn, :access_token)
       refute conn.assigns.current_user
     end

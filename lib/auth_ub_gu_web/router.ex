@@ -2,7 +2,6 @@ defmodule AuthUbGuWeb.Router do
   use AuthUbGuWeb, :router
 
   import AuthUbGuWeb.Auth.Hooks
-  import AuthUbGuWeb.Auth.FetchCurrentUser
 
   alias AuthUbGuWeb.Auth
 

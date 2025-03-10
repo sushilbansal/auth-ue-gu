@@ -23,22 +23,26 @@ defmodule AuthUbGuWeb.Auth.Login do
   @spec log_in_user(Plug.Conn.t(), Accounts.User.t(), map()) :: Plug.Conn.t()
   def log_in_user(conn, user, params \\ %{}) do
     {access_token, refresh_token} = generate_tokens(user)
+    user_return_to = get_session(conn, :user_return_to)
 
     conn
-    |> Shared.renew_session()
+    |> Shared.renew_session(force_renew: true)
     |> Token.put_access_token_in_session(access_token)
     |> Token.store_refresh_token_in_session_cookies_db(user, refresh_token, params)
-    |> after_sign_in_redirect()
+    |> redirect_after_login(user_return_to, params)
   end
 
   defp generate_tokens(user) do
     {Token.generate_access_token(user), Token.generate_refresh_token(user)}
   end
 
-  @spec after_sign_in_redirect(Plug.Conn.t()) :: Plug.Conn.t()
-  defp after_sign_in_redirect(conn) do
-    user_return_to = get_session(conn, :user_return_to)
+  # mostly used for testing - testing fails if the user is redirected
+  # so disable the redirect in the test
+  defp redirect_after_login(conn, _user_return_to, %{"redirect_after_login" => "false"}) do
+    conn
+  end
 
+  defp redirect_after_login(conn, user_return_to, %{}) do
     conn
     |> redirect(to: user_return_to || Shared.signed_in_path(conn))
   end

@@ -58,9 +58,9 @@ defmodule AuthUbGuWeb.Auth.Shared do
         |> put_session(:preferred_locale, preferred_locale)
       end
   """
-  @spec renew_session(Plug.Conn.t()) :: Plug.Conn.t()
-  def renew_session(conn) do
-    if get_session(conn, :access_token) || get_session(conn, :refresh_token) do
+  @spec renew_session(Plug.Conn.t(), list()) :: Plug.Conn.t()
+  def renew_session(conn, opts \\ []) do
+    if renew_session_conditions(conn, opts) do
       delete_csrf_token()
 
       conn
@@ -69,6 +69,14 @@ defmodule AuthUbGuWeb.Auth.Shared do
     else
       conn
     end
+  end
+
+  defp renew_session_conditions(_conn, force_renew: true) do
+    true
+  end
+
+  defp renew_session_conditions(conn, []) do
+    get_session(conn, :access_token) || get_session(conn, :refresh_token)
   end
 
   @spec maybe_write_remember_me_cookie(Plug.Conn.t(), String.t(), map()) :: Plug.Conn.t()

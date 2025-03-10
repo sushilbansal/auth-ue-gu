@@ -21,13 +21,14 @@ defmodule AuthUbGuWeb.Auth.Token do
           {Plug.Conn.t(), String.t() | nil}
   def get_access_token_from_session_or_refresh_token(conn) do
     access_token = get_session(conn, :access_token)
-    refresh_token = get_refresh_token_from_session_or_cookies(conn)
 
     case Guardian.decode_and_verify(access_token) do
       {:ok, _claims} ->
         {conn, access_token}
 
       _ ->
+        {refresh_token, conn} = get_refresh_token_from_session_or_cookies(conn)
+
         case generate_access_token_from_refresh_token(conn, refresh_token) do
           {conn, nil} ->
             {conn, nil}
@@ -41,9 +42,15 @@ defmodule AuthUbGuWeb.Auth.Token do
   @doc """
   Get the access token from the session or cookies.
   """
-  @spec get_refresh_token_from_session_or_cookies(Plug.Conn.t()) :: String.t() | nil
+  @spec get_refresh_token_from_session_or_cookies(Plug.Conn.t()) ::
+          {String.t() | nil, Plug.Conn.t()}
   def get_refresh_token_from_session_or_cookies(conn) do
-    get_session(conn, :refresh_token) || get_refresh_token_from_cookies(conn)
+    with {nil, conn} <- get_refresh_token_from_session(conn),
+         {nil, conn} <- get_refresh_token_from_cookies(conn) do
+      {nil, conn}
+    else
+      {token, conn} -> {token, conn}
+    end
   end
 
   def generate_access_token_from_refresh_token(conn, nil) do
@@ -60,7 +67,7 @@ defmodule AuthUbGuWeb.Auth.Token do
   def generate_access_token_from_refresh_token(conn, refresh_token) do
     with {:ok, claims} <- Guardian.decode_and_verify(refresh_token, %{"typ" => "refresh"}),
          # checking if the refresh token is valid in the database.
-         #  Need to do only when access token has expired & needs to be regenerated
+         #  TOTHINK: Need to do only when access token has expired & needs to be regenerated
          true <- Accounts.is_token_valid(refresh_token, "refresh"),
          user <- Accounts.get_user!(claims["sub"]) do
       conn =
@@ -92,13 +99,23 @@ defmodule AuthUbGuWeb.Auth.Token do
     store_refresh_token_in_session_cookies_db(conn, user, new_refresh_token, %{})
   end
 
-  # get the refresh token from the cookies
-  @spec get_refresh_token_from_cookies(Plug.Conn.t()) :: String.t() | nil
+  @spec get_refresh_token_from_session(Plug.Conn.t()) :: {String.t() | nil, Plug.Conn.t()}
+  def get_refresh_token_from_session(conn) do
+    {get_session(conn, :refresh_token), conn}
+  end
+
+  # get the refresh token from the cookies and store it in the session
+  @spec get_refresh_token_from_cookies(Plug.Conn.t()) :: {String.t() | nil, Plug.Conn.t()}
   defp get_refresh_token_from_cookies(conn) do
     %{remember_me_cookie: remember_me_cookie} = Shared.get_access_cookie_settings()
 
     conn = fetch_cookies(conn, signed: [remember_me_cookie])
-    conn.cookies[remember_me_cookie]
+
+    if token = conn.cookies[remember_me_cookie] do
+      {token, put_session(conn, :refresh_token, token)}
+    else
+      {nil, conn}
+    end
   end
 
   @doc """
@@ -135,11 +152,13 @@ defmodule AuthUbGuWeb.Auth.Token do
   """
   @spec put_access_token_in_session(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   def put_access_token_in_session(conn, access_token) do
-    live_socket_id = access_token |> String.slice(0, 16)
-
     conn
     |> put_session(:access_token, access_token)
-    |> put_session(:live_socket_id, "users_sessions:#{live_socket_id}")
+    |> put_session(:live_socket_id, generate_live_socket_id_from_access_token(access_token))
+  end
+
+  def generate_live_socket_id_from_access_token(access_token) do
+    "users_sessions:#{String.slice(access_token, 0, 16)}"
   end
 
   @doc """

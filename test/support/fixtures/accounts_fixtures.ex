@@ -10,8 +10,20 @@ defmodule AuthUbGu.AccountsFixtures do
   def valid_user_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{
       email: unique_user_email(),
-      password: valid_user_password()
+      password: valid_user_password(),
+      provider: "google",
+      provider_uid: "123",
+      name: "Test User"
     })
+  end
+
+  def user_fixture_provider(attrs \\ %{}) do
+    {:ok, user} =
+      attrs
+      |> valid_user_attributes()
+      |> AuthUbGu.Accounts.register_user()
+
+    user
   end
 
   def user_fixture(attrs \\ %{}) do

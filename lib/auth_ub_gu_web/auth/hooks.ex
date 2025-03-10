@@ -3,9 +3,35 @@ defmodule AuthUbGuWeb.Auth.Hooks do
 
   import Plug.Conn
   import Phoenix.Controller
+  alias AuthUbGuWeb.Auth.Token
   alias AuthUbGu.Auth.Guardian
   alias AuthUbGuWeb.Auth.Logout
   alias AuthUbGuWeb.Auth.Shared
+
+  @doc """
+  Fetch the current user from the access token in the session or refresh token.
+  and store it in the conn assigns.
+  """
+  @spec fetch_current_user(Plug.Conn.t(), list()) :: Plug.Conn.t()
+  def fetch_current_user(conn, _opts) do
+    case Token.get_access_token_from_session_or_refresh_token(conn) do
+      {conn, nil} ->
+        conn
+        |> Logout.log_out_user(redirect_after_logout: false)
+        |> assign(:current_user, nil)
+
+      {conn, access_token} ->
+        case Guardian.resource_from_token(access_token) do
+          {:ok, user, _claims} ->
+            assign(conn, :current_user, user)
+
+          _ ->
+            conn
+            |> Logout.log_out_user(redirect_after_logout: false)
+            |> assign(:current_user, nil)
+        end
+    end
+  end
 
   @doc """
   Handles mounting and authenticating the current_user in LiveViews.
@@ -78,6 +104,7 @@ defmodule AuthUbGuWeb.Auth.Hooks do
   defp mount_current_user(socket, session) do
     Phoenix.Component.assign_new(socket, :current_user, fn ->
       # use guardian to get the user from the access token
+      # TOTHINK: can we also use the refresh token alongside the access token?
       if access_token = session["access_token"] do
         case Guardian.resource_from_token(access_token) do
           {:ok, user, _claims} -> user

@@ -41,7 +41,7 @@ defmodule AuthUbGuWeb.Auth.Logout do
   end
 
   defp delete_refresh_token_from_db(conn) do
-    refresh_token = Token.get_refresh_token_from_session_or_cookies(conn)
+    {refresh_token, conn} = Token.get_refresh_token_from_session_or_cookies(conn)
     refresh_token && Accounts.delete_user_token(refresh_token, "refresh")
     conn
   end

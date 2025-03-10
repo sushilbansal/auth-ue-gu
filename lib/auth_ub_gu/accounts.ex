@@ -220,7 +220,7 @@ defmodule AuthUbGu.Accounts do
   ## Session
 
   @doc """
-  takes the token,  and just inserts in the db
+  takes the token, hashes it and stores it in the user_tokens table
   """
   def insert_token(user, token, context) do
     # {:ok, token, _claims} = Guardian.encode_and_sign(user)
@@ -230,17 +230,22 @@ defmodule AuthUbGu.Accounts do
   end
 
   @doc """
+  Generates a session token.
+  """
+  def generate_user_session_token(user) do
+    {token, user_token} = UserToken.build_session_token(user)
+    Repo.insert!(user_token)
+    token
+  end
+
+  @doc """
   Gets the user with the given signed token.
   """
-  def get_user_by_session_token(token, context) do
-    %{access: %{db: {validity, interval}}} = Shared.get_ttl_settings()
-
+  def get_user_by_session_token(token) do
     {:ok, query} =
       UserToken.verify_session_token_query(
         token,
-        context,
-        validity: validity,
-        interval: interval
+        "session"
       )
 
     Repo.one(query)
@@ -250,7 +255,8 @@ defmodule AuthUbGu.Accounts do
   Deletes the signed token with the given context.
   """
   def delete_user_token(token, context) do
-    Repo.delete_all(UserToken.by_token_and_context_query(token, context))
+    hashed_token = UserToken.hash_token(token)
+    Repo.delete_all(UserToken.by_token_and_context_query(hashed_token, context))
     :ok
   end
 
@@ -408,35 +414,13 @@ defmodule AuthUbGu.Accounts do
     end
   end
 
-  # TODO: not tested yet =========== START
-
   # generate jwt token
   def generate_jwt_for_user(user) do
     {:ok, token, _claims} = Guardian.encode_and_sign(user)
     token
   end
 
-  # store jwt in user_tokens
-  def store_jwt(user, token) do
-    hashed_token = UserToken.build_hash_jwt_token(token)
-
-    Repo.insert!(%UserToken{
-      token: hashed_token,
-      user_id: user.id,
-      context: "api_auth"
-    })
-
-    {:ok, token}
-  end
-
-  @doc """
-  check if the jwt token is valid
-  """
-  @spec valid_jwt?(String.t()) :: boolean()
-  def valid_jwt?(token) do
-    hashed_token = UserToken.build_hash_jwt_token(token)
-    Repo.exists?(from ut in UserToken, where: ut.token == ^hashed_token)
-  end
+  # TODO: not tested yet =========== START
 
   @doc """
   revoke jwt token by deleting from user_tokens table

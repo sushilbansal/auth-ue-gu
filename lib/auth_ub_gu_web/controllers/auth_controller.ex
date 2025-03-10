@@ -39,7 +39,7 @@ defmodule AuthUbGuWeb.AuthController do
   end
 
   # standard login with email and password - will be called from api likely
-  # TODO: needs testing
+  # TODO: needs testing - not using at this moment
   def login(conn, %{"email" => email, "password" => password}) do
     case Accounts.get_user_by_email_and_password(email, password) do
       %User{} = user ->
@@ -55,7 +55,7 @@ defmodule AuthUbGuWeb.AuthController do
     end
   end
 
-  # TODO: needs testing
+  # TODO: needs testing - not using at this moment
   def logout(conn, _params) do
     token =
       get_req_header(conn, "authorization")
@@ -77,13 +77,8 @@ defmodule AuthUbGuWeb.AuthController do
 
   defp unauthorized_response(conn, reason) do
     conn
+    |> put_flash(:error, reason)
     |> put_status(:unauthorized)
-    |> json(%{error: reason})
+    |> redirect(to: ~p"/users/log_in")
   end
 end
-
-# defp maybe_store_return_to(%{method: "GET"} = conn) do
-#   put_session(conn, :user_return_to, current_path(conn))
-# end
-
-# |> redirect(to: Routes.page_path(conn, :index))

@@ -41,9 +41,9 @@ defmodule AuthUbGu.Accounts.UserToken do
   and devices in the UI and allow users to explicitly expire any
   session they deem invalid.
   """
-  def build_session_token() do
-    :crypto.strong_rand_bytes(@rand_size)
-    # , %UserToken{token: token, context: "session", user_id: user.id}
+  def build_session_token(user) do
+    token = :crypto.strong_rand_bytes(@rand_size)
+    {token, %UserToken{token: token, context: "session", user_id: user.id}}
   end
 
   @doc """

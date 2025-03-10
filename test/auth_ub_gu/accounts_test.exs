@@ -179,6 +179,7 @@ defmodule AuthUbGu.AccountsTest do
       %{user: user_fixture()}
     end
 
+    @tag run: true
     test "sends token through notification", %{user: user} do
       token =
         extract_user_token(fn url ->
@@ -299,7 +300,7 @@ defmodule AuthUbGu.AccountsTest do
     end
 
     test "deletes all tokens for the given user", %{user: user} do
-      _ = Accounts.insert_token(user)
+      _ = Accounts.generate_user_session_token(user)
 
       {:ok, _} =
         Accounts.update_user_password(user, valid_user_password(), %{
@@ -321,7 +322,7 @@ defmodule AuthUbGu.AccountsTest do
           Accounts.deliver_user_confirmation_instructions(user, url)
         end)
 
-      # {:ok, token} = Base.url_decode64(token, padding: false)
+      {:ok, token} = Base.url_decode64(token, padding: false)
       assert user_token = Repo.get_by(UserToken, token: :crypto.hash(:sha256, token))
       assert user_token.user_id == user.id
       assert user_token.sent_to == user.email
@@ -442,7 +443,7 @@ defmodule AuthUbGu.AccountsTest do
     end
 
     test "deletes all tokens for the given user", %{user: user} do
-      _ = Accounts.insert_token(user)
+      _ = Accounts.generate_user_session_token(user)
       {:ok, _} = Accounts.reset_user_password(user, %{password: "new valid password"})
       refute Repo.get_by(UserToken, user_id: user.id)
     end
