@@ -9,7 +9,7 @@ defmodule AuthUbGu.Repo.Migrations.CreateUsersAuthTables do
       add :hashed_password, :string, null: true
       add :confirmed_at, :utc_datetime
 
-      add :provider, :string, default: "email"
+      add :provider, :string, null: true
       add :provider_uid, :string
       add :name, :string
 

@@ -62,7 +62,8 @@ defmodule AuthUbGu.MixProject do
       {:guardian, "~> 2.3"},
       {:ueberauth, "~> 0.10"},
       {:ueberauth_google, "~> 0.10"},
-      {:typed_ecto_schema, "~> 0.4.1"}
+      {:typed_ecto_schema, "~> 0.4.1"},
+      {:faker, "~> 0.18", only: :test}
     ]
   end
 

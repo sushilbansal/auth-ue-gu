@@ -1,7 +1,8 @@
 defmodule AuthUbGu.Accounts.UserToken do
   use Ecto.Schema
   import Ecto.Query
-  alias AuthUbGu.Accounts.UserToken
+  alias AuthUbGu.Accounts.{User, UserToken}
+  use TypedEctoSchema
 
   @hash_algorithm :sha256
   @rand_size 32
@@ -13,7 +14,7 @@ defmodule AuthUbGu.Accounts.UserToken do
   @change_email_validity_in_days 7
   @session_validity_in_days 60
 
-  schema "users_tokens" do
+  typed_schema "users_tokens" do
     field :token, :binary
     field :context, :string
     field :sent_to, :string
@@ -41,14 +42,7 @@ defmodule AuthUbGu.Accounts.UserToken do
   and devices in the UI and allow users to explicitly expire any
   session they deem invalid.
   """
-  def build_session_token(user) do
-    token = :crypto.strong_rand_bytes(@rand_size)
-    {token, %UserToken{token: token, context: "session", user_id: user.id}}
-  end
-
-  @doc """
-  hash the token, creates the user token struct and returns the same
-  """
+  @spec build_token(User.t(), String.t(), String.t()) :: UserToken.t()
   def build_token(user, token, context) do
     token = hash_token(token)
     %UserToken{token: token, context: context, user_id: user.id}
@@ -64,12 +58,11 @@ defmodule AuthUbGu.Accounts.UserToken do
   """
   @spec verify_session_token_query(String.t(), String.t(), Keyword.t()) :: {:ok, Ecto.Query.t()}
   def verify_session_token_query(token, context, opts \\ []) do
-    hashed_token = hash_token(token)
     validity = Keyword.get(opts, :validity, @session_validity_in_days)
     interval = Keyword.get(opts, :interval, "day")
 
     query =
-      from token in by_token_and_context_query(hashed_token, context),
+      from token in by_token_and_context_query(token, context),
         join: user in assoc(token, :user),
         where: token.inserted_at > ago(^validity, ^interval),
         select: user
@@ -103,7 +96,7 @@ defmodule AuthUbGu.Accounts.UserToken do
 
   defp build_hashed_token(user, context, sent_to) do
     token = :crypto.strong_rand_bytes(@rand_size)
-    hashed_token = :crypto.hash(@hash_algorithm, token)
+    hashed_token = hash_token(token)
 
     {Base.url_encode64(token, padding: false),
      %UserToken{

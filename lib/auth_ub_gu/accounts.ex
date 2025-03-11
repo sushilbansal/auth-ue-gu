@@ -223,32 +223,9 @@ defmodule AuthUbGu.Accounts do
   takes the token, hashes it and stores it in the user_tokens table
   """
   def insert_token(user, token, context) do
-    # {:ok, token, _claims} = Guardian.encode_and_sign(user)
     user_token = UserToken.build_token(user, token, context)
     Repo.insert!(user_token)
     token
-  end
-
-  @doc """
-  Generates a session token.
-  """
-  def generate_user_session_token(user) do
-    {token, user_token} = UserToken.build_session_token(user)
-    Repo.insert!(user_token)
-    token
-  end
-
-  @doc """
-  Gets the user with the given signed token.
-  """
-  def get_user_by_session_token(token) do
-    {:ok, query} =
-      UserToken.verify_session_token_query(
-        token,
-        "session"
-      )
-
-    Repo.one(query)
   end
 
   @doc """
@@ -263,9 +240,10 @@ defmodule AuthUbGu.Accounts do
   @spec is_token_valid(String.t(), String.t()) :: boolean()
   def is_token_valid(token, context) do
     %{refresh: %{db: {validity, interval}}} = Shared.get_ttl_settings()
+    hashed_token = UserToken.hash_token(token)
 
     {:ok, query} =
-      UserToken.verify_session_token_query(token, context,
+      UserToken.verify_session_token_query(hashed_token, context,
         validity: validity,
         interval: interval
       )
