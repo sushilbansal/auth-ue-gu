@@ -6,7 +6,7 @@ defmodule AuthUbGuWeb.Auth.LogoutTest do
 
   alias AuthUbGuWeb.Auth.Login
   alias AuthUbGuWeb.Auth.Logout
-  alias AuthUbGuWeb.Auth.Token
+
   alias AuthUbGuWeb.Auth.Shared
   alias AuthUbGu.Accounts
 

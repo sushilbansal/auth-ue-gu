@@ -3,12 +3,7 @@ defmodule AuthUbGuWeb.AuthControllerTest do
 
   import Plug.Conn
   import Phoenix.ConnTest
-  import Phoenix.Router.Helpers
 
-  alias(AuthUbGu.Accounts)
-  alias AuthUbGu.Accounts.User
-  alias AuthUbGuWeb.Auth.Login
-  alias AuthUbGuWeb.Auth.Token
   alias AuthUbGuWeb.Auth.Shared
 
   @provider "google"
@@ -59,12 +54,12 @@ defmodule AuthUbGuWeb.AuthControllerTest do
       # assert response =~ auth.info.email
     end
 
-    test "handles authentication failure gracefully", %{conn: conn, auth: auth} do
+    test "handles authentication failure gracefully", %{conn: conn} do
       conn =
         conn
         |> get(~p"/auth/#{@provider}/callback")
 
-      assert get_flash(conn, :error) == "Authentication failed"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Authentication failed"
       assert redirected_to(conn, 401) == ~p"/users/log_in"
     end
   end

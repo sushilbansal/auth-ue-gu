@@ -34,10 +34,16 @@ defmodule AuthUbGuWeb.UserSettingsLive do
         </.simple_form>
       </div>
       <div>
+        <%!-- changed the action from /users/log_in to /users/log_in_after_password_reset
+            original solution relies on user token in db for fetching current user
+            while this project uses Guardian for fetching current user.
+            user is still logged in after password change.
+            in order to invalidate the session, the user is relogged in.
+       --%>
         <.simple_form
           for={@password_form}
           id="password_form"
-          action={~p"/users/log_in?_action=password_updated"}
+          action={~p"/users/log_in_after_password_reset?_action=password_updated"}
           method="post"
           phx-change="validate_password"
           phx-submit="update_password"

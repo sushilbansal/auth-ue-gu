@@ -104,10 +104,10 @@ defmodule AuthUbGuWeb.UserSettingsLiveTest do
           }
         })
 
-      render_submit(form)
+      assert render_submit(form) =~
+               ~p"/users/log_in_after_password_reset?_action=password_updated"
 
       new_password_conn = follow_trigger_action(form, conn)
-
       assert redirected_to(new_password_conn) == ~p"/users/settings"
 
       assert get_session(new_password_conn, :access_token) !=

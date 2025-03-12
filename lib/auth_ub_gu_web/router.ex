@@ -97,5 +97,7 @@ defmodule AuthUbGuWeb.Router do
       live "/users/confirm/:token", UserConfirmationLive, :edit
       live "/users/confirm", UserConfirmationInstructionsLive, :new
     end
+
+    post "/users/log_in_after_password_reset", UserSessionController, :create
   end
 end

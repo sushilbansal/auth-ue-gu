@@ -22,8 +22,8 @@ defmodule AuthUbGuWeb.Auth.Login do
   """
   @spec log_in_user(Plug.Conn.t(), Accounts.User.t(), map()) :: Plug.Conn.t()
   def log_in_user(conn, user, params \\ %{}) do
-    {access_token, refresh_token} = generate_tokens(user)
     user_return_to = get_session(conn, :user_return_to)
+    {access_token, refresh_token} = generate_tokens(user)
 
     conn
     |> Shared.renew_session(force_renew: true)
