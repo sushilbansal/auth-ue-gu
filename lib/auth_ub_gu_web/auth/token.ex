@@ -66,8 +66,7 @@ defmodule AuthUbGuWeb.Auth.Token do
           {Plug.Conn.t(), String.t()} | {Plug.Conn.t(), nil}
   def generate_access_token_from_refresh_token(conn, refresh_token) do
     with {:ok, claims} <- Guardian.decode_and_verify(refresh_token, %{"typ" => "refresh"}),
-         # checking if the refresh token is valid in the database.
-         #  TOTHINK: Need to do only when access token has expired & needs to be regenerated
+         # check if the refresh token is valid in the database.
          true <- Accounts.is_token_valid(refresh_token, "refresh"),
          user <- Accounts.get_user!(claims["sub"]) do
       conn =
@@ -96,7 +95,10 @@ defmodule AuthUbGuWeb.Auth.Token do
     # delete the old refresh token which has expired or nearing expiry
     Accounts.delete_user_token(refresh_token, "refresh")
     new_refresh_token = generate_refresh_token(user)
-    store_refresh_token_in_session_cookies_db(conn, user, new_refresh_token, %{})
+
+    store_refresh_token_in_session_cookies_db(conn, user, new_refresh_token, %{
+      "remember_me" => "true"
+    })
   end
 
   @spec get_refresh_token_from_session(Plug.Conn.t()) :: {String.t() | nil, Plug.Conn.t()}
@@ -106,7 +108,7 @@ defmodule AuthUbGuWeb.Auth.Token do
 
   # get the refresh token from the cookies and store it in the session
   @spec get_refresh_token_from_cookies(Plug.Conn.t()) :: {String.t() | nil, Plug.Conn.t()}
-  defp get_refresh_token_from_cookies(conn) do
+  def get_refresh_token_from_cookies(conn) do
     %{remember_me_cookie: remember_me_cookie} = Shared.get_access_cookie_settings()
 
     conn = fetch_cookies(conn, signed: [remember_me_cookie])
@@ -164,9 +166,9 @@ defmodule AuthUbGuWeb.Auth.Token do
   @doc """
   Generate an access token.
   """
-  @spec generate_access_token(Accounts.User.t()) :: String.t()
-  def generate_access_token(user) do
-    %{access: %{guardian: access_ttl}} = Shared.get_ttl_settings()
+  @spec generate_access_token(Accounts.User.t(), list()) :: String.t()
+  def generate_access_token(user, opts \\ []) do
+    access_ttl = Keyword.get(opts, :access_ttl, Shared.get_ttl_settings().access.guardian)
 
     {:ok, access_token, _} =
       Guardian.encode_and_sign(user, %{}, token_type: "access", ttl: access_ttl)
@@ -177,9 +179,9 @@ defmodule AuthUbGuWeb.Auth.Token do
   @doc """
   Generate a refresh token.
   """
-  @spec generate_refresh_token(Accounts.User.t()) :: String.t()
-  def generate_refresh_token(user) do
-    %{refresh: %{guardian: refresh_ttl}} = Shared.get_ttl_settings()
+  @spec generate_refresh_token(Accounts.User.t(), list()) :: String.t()
+  def generate_refresh_token(user, opts \\ []) do
+    refresh_ttl = Keyword.get(opts, :refresh_ttl, Shared.get_ttl_settings().refresh.guardian)
 
     {:ok, refresh_token, _} =
       Guardian.encode_and_sign(user, %{}, token_type: "refresh", ttl: refresh_ttl)
