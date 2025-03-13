@@ -79,10 +79,8 @@ config :ueberauth, Ueberauth,
   ]
 
 config :ueberauth, Ueberauth.Strategy.Google.OAuth,
-  client_id: "1059919869688-e50g6tllghoc67u7k361m897fq3ecqts.apps.googleusercontent.com",
-  client_secret: "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"
-
-# System.get_env("GUARDIAN_SECRET_KEY")
+  client_id: System.get_env("GOOGLE_GUARDIAN_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_GUARDIAN_SECRET_KEY")
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
